@@ -1,0 +1,293 @@
+/* ============================================================
+   tom.ai — Component Styles (Black & Grey Theme)
+   ============================================================ */
+
+/* ---- Navbar --------------------------------------------------------------- */
+.navbar {
+  position: sticky; top: 0; z-index: 100;
+  height: 64px;
+  background: rgba(0,0,0,0.85);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.navbar-inner {
+  max-width: 1200px; margin: 0 auto;
+  padding: 0 24px; height: 100%;
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 24px;
+}
+
+.navbar-brand {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none; color: var(--white);
+  font-family: var(--font-heading); font-size: 18px; font-weight: 800;
+  letter-spacing: -0.01em; white-space: nowrap;
+}
+.navbar-brand .brand-icon { font-size: 22px; }
+.navbar-brand:hover { color: var(--white); }
+
+.navbar-links { display: flex; align-items: center; gap: 2px; }
+
+.nav-link {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: var(--radius-md);
+  font-size: 13px; font-weight: 500;
+  color: var(--text-muted); text-decoration: none;
+  transition: var(--transition);
+}
+.nav-link:hover { color: var(--white); background: var(--grey-800); }
+.nav-link.active { color: var(--white); background: var(--grey-700); }
+
+.navbar-right { display: flex; align-items: center; gap: 10px; }
+
+.navbar-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--grey-600); border: 1px solid var(--border-strong);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--white);
+  flex-shrink: 0;
+}
+
+/* Google profile picture in navbar */
+.navbar-avatar-img {
+  width: 30px; height: 30px; border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--border-strong);
+  flex-shrink: 0;
+  display: block;
+}
+
+.navbar-greeting {
+  font-size: 12px; color: var(--text-dim);
+  display: flex; align-items: center; gap: 7px;
+}
+.navbar-greet-text {
+  font-size: 12px;
+  color: var(--grey-200);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ---- ChatMessage ---------------------------------------------------------- */
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  animation: fadeIn 0.25s ease;
+  max-width: 100%;
+}
+
+/* USER — right side */
+.message-row.user {
+  flex-direction: row-reverse;   /* avatar on right, bubble on right */
+  justify-content: flex-start;
+}
+
+/* BOT — left side (default) */
+.message-row.bot {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.message-content-wrap {
+  display: flex;
+  flex-direction: column;
+  max-width: 68%;
+  min-width: 0;
+}
+
+/* user text aligns right */
+.message-row.user .message-content-wrap { align-items: flex-end; }
+/* bot text aligns left */
+.message-row.bot  .message-content-wrap { align-items: flex-start; }
+
+.message-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0;
+}
+.message-row.user .message-avatar { background: var(--grey-700); border: 1px solid var(--border-strong); }
+.message-row.bot  .message-avatar { background: var(--grey-800); border: 1px solid var(--border); }
+
+/* Google profile picture inside chat messages */
+.msg-avatar-img {
+  width: 30px; height: 30px; border-radius: 50%;
+  object-fit: cover; border: 1px solid var(--border-strong);
+}
+
+.message-bubble {
+  padding: 11px 15px;
+  border-radius: var(--radius-lg);
+  font-size: 14px; line-height: 1.6; word-break: break-word;
+}
+
+/* USER bubble — right, distinct style */
+.message-row.user .message-bubble {
+  background: #1a1a2e;
+  color: var(--white);
+  border: 1px solid rgba(99,102,241,0.35);
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 12px rgba(99,102,241,0.15);
+}
+
+/* BOT bubble — left */
+.message-row.bot .message-bubble {
+  background: var(--grey-850);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+
+.message-meta { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+.message-row.user .message-meta { text-align: right; }
+.message-row.bot  .message-meta { text-align: left; }
+
+/* Markdown rendering inside bot bubbles */
+.msg-line  { margin: 2px 0; line-height: 1.65; }
+.msg-spacer { height: 8px; }
+.msg-bullet { margin: 3px 0 3px 8px; line-height: 1.6; }
+
+.msg-inline-code {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--grey-50);
+}
+
+.msg-code-block {
+  background: var(--grey-900);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin: 8px 0;
+  overflow-x: auto;
+  position: relative;
+}
+.msg-code-block code {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--grey-100);
+  white-space: pre;
+  line-height: 1.6;
+}
+.msg-code-lang {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+
+/* ---- TaskCard ------------------------------------------------------------- */
+.task-card {
+  background: var(--grey-850);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 9px;
+  transition: var(--transition-slow);
+  animation: fadeIn 0.3s ease;
+  position: relative; overflow: hidden;
+}
+
+.task-card::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; border-radius: 3px 0 0 3px;
+  transition: var(--transition);
+}
+
+.task-card.priority-high::before   { background: var(--danger); }
+.task-card.priority-medium::before { background: var(--warning); }
+.task-card.priority-low::before    { background: var(--success); }
+.task-card.status-completed { opacity: 0.5; }
+
+.task-card:hover {
+  border-color: rgba(255,255,255,0.12);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.task-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.task-name { font-weight: 600; font-size: 14px; color: var(--white); }
+.task-name.completed { text-decoration: line-through; color: var(--text-dim); }
+.task-badges { display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; }
+.task-description { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.task-meta { display: flex; align-items: center; gap: 14px; font-size: 11px; color: var(--text-dim); flex-wrap: wrap; }
+.task-meta-item { display: flex; align-items: center; gap: 4px; }
+.task-meta-item.overdue { color: var(--danger); }
+.task-actions { display: flex; gap: 7px; flex-wrap: wrap; padding-top: 5px; border-top: 1px solid var(--border); }
+
+/* ---- LoadingSpinner ------------------------------------------------------- */
+.loading-spinner-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; padding: 20px;
+}
+.loading-text { font-size: 12px; color: var(--text-dim); animation: pulseText 1.4s ease-in-out infinite; }
+@keyframes pulseText { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+/* ---- Token Counter -------------------------------------------------------- */
+.token-counter { font-size: 10px; color: var(--text-dim); text-align: right; padding: 3px 0; }
+
+/* ============================================================
+   MASCOT — Running Robot Cat
+   ============================================================ */
+.mascot-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  z-index: 50;
+  overflow: hidden;
+}
+
+.mascot-runner {
+  position: absolute;
+  bottom: 8px;
+  will-change: transform;
+  animation:
+    mascot-run 18s linear infinite,
+    mascot-bounce 0.32s ease-in-out infinite;
+}
+
+@keyframes mascot-run {
+  0%   { left: -110px; transform: scaleX(1);  }
+  46%  { left: calc(100vw + 20px); transform: scaleX(1);  }
+  50%  { left: calc(100vw + 20px); transform: scaleX(-1); }
+  96%  { left: -110px; transform: scaleX(-1); }
+  100% { left: -110px; transform: scaleX(1);  }
+}
+
+@keyframes mascot-bounce {
+  0%,100% { bottom: 8px; }
+  50%      { bottom: 18px; }
+}
+
+/* Leg animations */
+@keyframes leg-a {
+  0%,100% { transform: rotate(-25deg) translateY(0); }
+  50%     { transform: rotate(20deg)  translateY(-3px); }
+}
+@keyframes leg-b {
+  0%,100% { transform: rotate(20deg)  translateY(-3px); }
+  50%     { transform: rotate(-25deg) translateY(0); }
+}
+@keyframes tail-wag {
+  0%,100% { transform-origin: 0% 100%; transform: rotate(0deg); }
+  25%     { transform: rotate(15deg); }
+  75%     { transform: rotate(-15deg); }
+}
+
+.mascot-leg-a { animation: leg-a 0.32s ease-in-out infinite; transform-origin: top center; }
+.mascot-leg-b { animation: leg-b 0.32s ease-in-out infinite; transform-origin: top center; }
+.mascot-tail  { animation: tail-wag 0.6s ease-in-out infinite; transform-origin: 30% 80%; }

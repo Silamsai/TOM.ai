@@ -1,0 +1,167 @@
+/* ============================================================
+   tom.ai — Welcome / Landing Page Styles
+   ============================================================ */
+
+.welcome-page {
+  min-height: 100vh;
+  background: var(--black);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative;
+}
+
+/* ── Particle background ── */
+.welcome-particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+
+.wparticle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  animation: wp-float calc(6s + calc(var(--i) * 0.7s)) ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.4s);
+  width:  calc(4px + calc(var(--i) * 3px));
+  height: calc(4px + calc(var(--i) * 3px));
+  left:   calc(var(--i) * 5.5%);
+  top:    calc(30% + calc(var(--i) * 3%));
+}
+@keyframes wp-float {
+  0%,100% { transform: translateY(0) scale(1); opacity: 0.3; }
+  50%      { transform: translateY(-40px) scale(1.15); opacity: 0.7; }
+}
+
+/* ── Intro splash ── */
+.welcome-intro {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 16px; text-align: center;
+}
+
+.wi-orb {
+  position: absolute;
+  width: 320px; height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
+  animation: orb-pulse 3s ease-in-out infinite;
+}
+@keyframes orb-pulse {
+  0%,100% { transform: scale(1); opacity: 0.5; }
+  50%      { transform: scale(1.15); opacity: 1; }
+}
+
+.wi-robot { font-size: 72px; animation: float 3s ease-in-out infinite; position: relative; z-index: 1; }
+.wi-brand { font-size: 48px; font-family: var(--font-heading); font-weight: 800; color: var(--white); letter-spacing: -0.03em; position: relative; z-index: 1; }
+.wi-sub   { font-size: 15px; color: var(--text-muted); position: relative; z-index: 1; }
+
+.wi-dots { display: flex; gap: 8px; margin-top: 8px; position: relative; z-index: 1; }
+.wi-dots span {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--grey-500);
+  animation: dot-pulse 1.2s ease-in-out infinite;
+}
+.wi-dots span:nth-child(2) { animation-delay: 0.2s; }
+.wi-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot-pulse { 0%,100% { transform: scale(1); opacity:0.4; } 50% { transform: scale(1.4); opacity:1; background:var(--white); } }
+
+/* ── Split layout ── */
+.welcome-split {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: 1fr 1fr;
+  min-height: 100vh; width: 100%;
+}
+
+/* ── Left panel ── */
+.welcome-left {
+  background: var(--grey-950);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 28px; padding: 48px 40px;
+  overflow: hidden; position: relative;
+}
+
+.wl-brand {
+  font-family: var(--font-heading); font-size: 22px; font-weight: 800;
+  color: var(--white); letter-spacing: -0.02em;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.wl-hero {
+  width: 100%; max-width: 340px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-lg);
+  object-fit: cover;
+  animation: hero-float 6s ease-in-out infinite;
+}
+@keyframes hero-float {
+  0%,100% { transform: translateY(0) rotate(-1deg); }
+  50%      { transform: translateY(-12px) rotate(1deg); }
+}
+
+/* ── Features list ── */
+.wl-features {
+  display: flex; flex-direction: column; gap: 14px;
+  width: 100%; max-width: 340px;
+}
+
+.wl-feature-row {
+  display: flex; align-items: flex-start; gap: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  transition: var(--transition);
+}
+.wl-feature-row:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: var(--border-strong);
+}
+
+.wl-feature-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+.wl-feature-title { font-size: 13px; font-weight: 700; color: var(--white); margin-bottom: 2px; }
+.wl-feature-desc  { font-size: 12px; color: var(--text-dim); line-height: 1.4; }
+
+/* ── Right panel ── */
+.welcome-right {
+  display: flex; flex-direction: column;
+  justify-content: center; gap: 14px;
+  padding: 56px 52px;
+  background: var(--black);
+  max-width: 500px;
+  margin: 0 auto; width: 100%;
+}
+
+.wr-header { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.wr-logo   { font-size: 40px; animation: float 3s ease-in-out infinite; display: block; }
+.wr-header h2 { font-size: 28px; font-weight: 800; color: var(--white); letter-spacing: -0.02em; }
+.wr-header p  { font-size: 14px; color: var(--text-muted); }
+
+.welcome-cta {
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+.welcome-cta:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(255,255,255,0.15);
+}
+
+/* Guest link */
+.wr-guest { text-align: center; margin-top: 2px; }
+.wr-guest-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-dim); font-size: 13px;
+  font-family: var(--font-sans);
+  transition: var(--transition);
+  padding: 4px 8px;
+}
+.wr-guest-btn:hover { color: var(--white); }
+
+.wr-note { font-size: 11px; color: var(--text-dim); text-align: center; margin-top: 4px; }
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .welcome-split { grid-template-columns: 1fr; }
+  .welcome-left  { display: none; }
+  .welcome-right { padding: 40px 28px; max-width: 100%; }
+}
+@media (max-width: 480px) {
+  .welcome-right { padding: 28px 20px; }
+}
