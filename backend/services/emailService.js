@@ -1,37 +1,69 @@
 const { Resend } = require('resend');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 const { OTP_VALIDITY_MINUTES } = require('../config/constants');
 
 // ---- Startup credential check -----------------------------------------------
-console.log(`[EmailService] RESEND_API_KEY: ${process.env.RESEND_API_KEY ? 'SET ✅' : '⚠️ NOT SET — falling back to Gmail SMTP'}`);
-console.log(`[EmailService] GMAIL_USER: ${process.env.GMAIL_USER || '⚠️ NOT SET'}`);
-console.log(`[EmailService] GMAIL_PASS: ${process.env.GMAIL_PASS ? `SET (${process.env.GMAIL_PASS.length} chars) ✅` : '⚠️ NOT SET'}`);
+console.log(`[EmailService] Providers loaded:`);
+console.log(` - SENDGRID_API_KEY: ${process.env.SENDGRID_API_KEY ? 'SET ✅' : '⚠️ NOT SET'}`);
+console.log(` - RESEND_API_KEY: ${process.env.RESEND_API_KEY ? 'SET ✅' : '⚠️ NOT SET'}`);
+console.log(` - GMAIL_USER: ${process.env.GMAIL_USER || '⚠️ NOT SET'}`);
 
-// ---- Email sender -----------------------------------------------------------
 /**
- * Sends an email using Resend API (preferred, HTTPS-based, works on all cloud hosts)
- * or falls back to Gmail SMTP if RESEND_API_KEY is not configured.
+ * Sends an email using:
+ * 1. SendGrid API (Preferred for custom recipients without owning a domain, uses HTTP port 443)
+ * 2. Resend API (HTTPS-based, requires verified domain for sending to arbitrary users)
+ * 3. Gmail SMTP (Fallback for local dev, blocked by Render Free tier)
  */
 const sendMail = async ({ from, to, subject, html }) => {
-  // ── Primary: Resend API (works on Render, Vercel, Railway, etc.) ──
-  if (process.env.RESEND_API_KEY) {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const { error } = await resend.emails.send({
-      from: process.env.RESEND_FROM || 'TOM.AI <onboarding@resend.dev>',
-      to,
-      subject,
-      html,
-    });
-    if (error) {
-      console.error('[EmailService] Resend error:', error);
-      throw new Error(`Resend API error: ${error.message}`);
+  // ── 1. SendGrid API ──
+  if (process.env.SENDGRID_API_KEY) {
+    try {
+      const fromEmail = process.env.GMAIL_USER || 'TomAi.alerts@gmail.com';
+      await axios.post('https://api.sendgrid.com/v3/mail/send', {
+        personalizations: [{ to: [{ email: to }] }],
+        from: { email: fromEmail, name: 'TOM.AI' },
+        subject,
+        content: [{ type: 'text/html', value: html }]
+      }, {
+        headers: {
+          'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log(`[EmailService] ✅ Email sent via SendGrid API to: ${to}`);
+      return;
+    } catch (err) {
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      console.error('[EmailService] SendGrid API error:', errMsg);
+      throw new Error(`SendGrid API error: ${errMsg}`);
     }
-    console.log(`[EmailService] ✅ Email sent via Resend to: ${to}`);
-    return;
   }
 
-  // ── Fallback: Gmail SMTP (works locally) ──
-  console.warn('[EmailService] RESEND_API_KEY not set — using Gmail SMTP fallback');
+  // ── 2. Resend API ──
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const { error } = await resend.emails.send({
+        from: process.env.RESEND_FROM || 'TOM.AI <onboarding@resend.dev>',
+        to,
+        subject,
+        html,
+      });
+      if (error) {
+        console.error('[EmailService] Resend error:', error);
+        throw new Error(`Resend API error: ${error.message}`);
+      }
+      console.log(`[EmailService] ✅ Email sent via Resend to: ${to}`);
+      return;
+    } catch (err) {
+      console.error('[EmailService] Resend exception:', err.message);
+      throw err;
+    }
+  }
+
+  // ── 3. Gmail SMTP Fallback (Local Dev only) ──
+  console.warn('[EmailService] No HTTP Email API keys configured — using Gmail SMTP fallback');
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
@@ -46,8 +78,13 @@ const sendMail = async ({ from, to, subject, html }) => {
 
   for (let attempt = 0; attempt <= 2; attempt++) {
     try {
-      await transporter.sendMail({ from, to, subject, html });
-      console.log(`[EmailService] ✅ Email sent via Gmail SMTP to: ${to}`);
+      await transporter.sendMail({
+        from: `"TOM.AI" <${process.env.GMAIL_USER}>`,
+        to,
+        subject,
+        html
+      });
+      console.log(`[EmailService] ✅ Email sent via Gmail SMTP fallback to: ${to}`);
       return;
     } catch (err) {
       console.error(`[EmailService] Gmail SMTP attempt ${attempt + 1} failed:`, err.message);
