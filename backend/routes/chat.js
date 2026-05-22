@@ -70,7 +70,7 @@ router.post('/message', async (req, res, next) => {
     ) {
       return res.status(500).json({
         success: false,
-        message: 'Error occurred, please wait.'
+        message: 'AI brain not working, please wait.'
       });
     }
     next(error);

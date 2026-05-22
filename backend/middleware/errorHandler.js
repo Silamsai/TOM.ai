@@ -61,7 +61,7 @@ const errorHandler = (err, req, res, next) => {
     lowerMsg.includes('gemini') ||
     lowerMsg.includes('google')
   ) {
-    clientMessage = 'Error occurred, please wait.';
+    clientMessage = 'AI brain not working, please wait.';
   }
 
   res.status(err.status || 500).json({
