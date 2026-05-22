@@ -291,3 +291,15 @@
 .mascot-leg-a { animation: leg-a 0.32s ease-in-out infinite; transform-origin: top center; }
 .mascot-leg-b { animation: leg-b 0.32s ease-in-out infinite; transform-origin: top center; }
 .mascot-tail  { animation: tail-wag 0.6s ease-in-out infinite; transform-origin: 30% 80%; }
+
+/* ---- Mobile & Tablet Optimisations ---------------------------------------- */
+@media (max-width: 640px) {
+  .message-content-wrap {
+    max-width: 88%;
+  }
+  .mascot-wrapper {
+    transform: scale(0.7);
+    transform-origin: bottom left;
+    width: 143%; /* compensate for 0.7 scale to cover full width */
+  }
+}
