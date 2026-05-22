@@ -22,12 +22,13 @@ const trySendOTP = async (sendFn, email, otp) => {
     await sendFn(email, otp);
     return { sent: true };
   } catch (err) {
+    console.error('[Auth Service] Detailed Send Email Error:', err);
     if (IS_DEV) {
       // ⚡ DEV MODE: log OTP to console so you can test without email config
       console.warn(`\n⚡ [DEV MODE] Email failed — OTP for ${email}: ${otp}\n`);
       return { sent: false, devOTP: otp };
     }
-    throw new Error('Failed to send OTP email. Please check your Gmail credentials in .env');
+    throw new Error(`Failed to send OTP email: ${err.message}`);
   }
 };
 
