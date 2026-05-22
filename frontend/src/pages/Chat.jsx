@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { sendChatMessage, getChatHistory, fetchGmailEmails } from '../services/api';
+import { sendChatMessage, getChatHistory } from '../services/api';
 import ChatMessage from '../components/ChatMessage';
 import Navbar from '../components/Navbar';
 import ChatSidebar from '../components/ChatSidebar';
@@ -34,7 +34,7 @@ const Chat = () => {
   const [attachments, setAttachments]    = useState([]);
   const [loading,     setLoading]        = useState(false);
   const [error,       setError]          = useState('');
-  const [totalTokens, setTotalTokens]   = useState({ input: 0, output: 0 });
+
   const [theme,       setTheme]          = useState(() => localStorage.getItem('tom_theme') || 'dark');
 
   const messagesEndRef = useRef(null);
@@ -131,12 +131,7 @@ const Chat = () => {
         const res = await sendChatMessage(trimmed || `Please review the attached file: ${sentAttachments[0]?.fileName}`, sentAttachments);
         const { botResponse, timestamp, tokens } = res.data.data;
         botText = botResponse;
-        if (tokens) {
-          setTotalTokens(prev => ({
-            input:  prev.input  + (tokens.input  || 0),
-            output: prev.output + (tokens.output || 0),
-          }));
-        }
+
         const botMsg = { type: 'bot', message: botText, timestamp, id: `b-${Date.now()}` };
         setMessages(prev => [...prev, botMsg]);
       } else {
