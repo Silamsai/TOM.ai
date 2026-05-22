@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllSessions, createSession, deleteSession, setCurrentId, getCurrentId, renameSession } from '../utils/chatSessions';
+import { getGoogleAuthUrl, getPublicMcps } from '../services/api';
 import '../styles/sidebar.css';
 
 const timeAgo = (ts) => {
@@ -67,11 +68,10 @@ const MCPModal = ({ onClose }) => {
   );
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/admin/mcps-public')
-      .then(r => r.json())
-      .then(d => {
+    getPublicMcps()
+      .then(res => {
+        const d = res.data;
         if (d.success && d.data && d.data.length > 0) {
-          // preserve custom SVG icons or properties if present
           setMcpApps(d.data);
         }
       })
@@ -82,14 +82,14 @@ const MCPModal = ({ onClose }) => {
     if (appId === 'gmail') {
       setConnecting('gmail');
       try {
-        const res = await fetch('http://localhost:5000/api/auth/google/url');
-        const data = await res.json();
+        const res = await getGoogleAuthUrl();
+        const data = res.data;
         if (data.authUrl) {
           localStorage.setItem('tom_gmail_pending', 'true');
           window.location.href = data.authUrl;
         }
       } catch {
-        alert('Backend not reachable. Make sure the backend is running on port 5000.');
+        alert('Backend not reachable. Make sure the backend is running.');
         setConnecting(null);
       }
       return;

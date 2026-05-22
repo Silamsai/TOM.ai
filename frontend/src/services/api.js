@@ -113,4 +113,10 @@ export const deleteReminder = (id) =>
 export const fetchGmailEmails = (query = '', max = 10) =>
   api.get('/gmail/emails', { params: { q: query, max } });
 
+// ============================================================
+// ADMIN / MCP
+// ============================================================
+export const getPublicMcps = () =>
+  api.get('/admin/mcps-public');
+
 export default api;
