@@ -43,12 +43,13 @@ const getGoogleAuthUrl = () => {
  * @param {string} code - Authorization code received from Google callback
  * @returns {Promise<{ access_token, refresh_token, id_token }>}
  */
-const exchangeCodeForToken = async (code) => {
+const exchangeCodeForToken = async (code, customRedirectUri) => {
+  const redirectUri = customRedirectUri || REDIRECT_URI;
   const response = await axios.post(GOOGLE_TOKEN_URL, {
     code,
     client_id: process.env.GOOGLE_CLIENT_ID,
     client_secret: process.env.GOOGLE_CLIENT_SECRET,
-    redirect_uri: REDIRECT_URI, // must match the one used in getGoogleAuthUrl
+    redirect_uri: redirectUri,
     grant_type: 'authorization_code',
   });
   return response.data;

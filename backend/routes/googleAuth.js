@@ -35,10 +35,14 @@ router.post('/callback', async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Authorization code is required.' });
     }
 
+    // Determine the exact redirect URI based on the request's origin to prevent redirect_uri_mismatch
+    const origin = req.headers.origin || 'http://localhost:3000';
+    const redirectUri = `${origin}/auth/google/callback`;
+
     // 1. Exchange authorization code for Google tokens
     let tokenData;
     try {
-      tokenData = await exchangeCodeForToken(code);
+      tokenData = await exchangeCodeForToken(code, redirectUri);
     } catch (err) {
       console.error('[Google Auth] Token exchange failed:', err.response?.data || err.message);
       return res.status(400).json({
