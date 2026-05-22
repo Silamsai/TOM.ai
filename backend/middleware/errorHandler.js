@@ -50,9 +50,23 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // ---- Default 500 ---------------------------------------------------------
+  let clientMessage = err.message || 'An unexpected server error occurred.';
+
+  // Mask API key and sensitive service errors
+  const lowerMsg = clientMessage.toLowerCase();
+  if (
+    lowerMsg.includes('api_key') ||
+    lowerMsg.includes('api key') ||
+    lowerMsg.includes('apikey') ||
+    lowerMsg.includes('gemini') ||
+    lowerMsg.includes('google')
+  ) {
+    clientMessage = 'Error occurred, please wait.';
+  }
+
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || 'An unexpected server error occurred.',
+    message: clientMessage,
   });
 };
 

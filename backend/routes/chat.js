@@ -60,6 +60,19 @@ router.post('/message', async (req, res, next) => {
     });
   } catch (error) {
     console.error('[Chat] Error:', error.message);
+    const errMsg = error.message || '';
+    if (
+      errMsg.toLowerCase().includes('api_key') ||
+      errMsg.toLowerCase().includes('api key') ||
+      errMsg.toLowerCase().includes('apikey') ||
+      errMsg.toLowerCase().includes('gemini') ||
+      errMsg.toLowerCase().includes('google')
+    ) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error occurred, please wait.'
+      });
+    }
     next(error);
   }
 });
