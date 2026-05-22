@@ -225,6 +225,9 @@ const Signup = () => {
             <button id="signup-submit-btn" type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading}>
               {loading ? <LoadingSpinner size="small" /> : '🚀 Create Account'}
             </button>
+            <p className="spam-notice-text" style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', marginTop: '12px', lineHeight: '1.4' }}>
+              ℹ️ Don't see the email? Please check your <strong>Spam folder</strong>. If it's there, mark it as <strong>"Not Spam"</strong> to receive future task reminders directly in your inbox.
+            </p>
             <button type="button" className="btn btn-secondary btn-full" onClick={() => { setStep(1); setError(''); }}>
               ← Back
             </button>
