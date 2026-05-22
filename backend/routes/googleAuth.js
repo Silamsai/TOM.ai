@@ -45,9 +45,10 @@ router.post('/callback', async (req, res, next) => {
       tokenData = await exchangeCodeForToken(code, redirectUri);
     } catch (err) {
       console.error('[Google Auth] Token exchange failed:', err.response?.data || err.message);
+      const googleError = err.response?.data?.error_description || err.response?.data?.error || err.message;
       return res.status(400).json({
         success: false,
-        message: 'Failed to exchange Google authorization code. It may have expired — please try again.',
+        message: `Failed to exchange Google authorization code. Google error: ${googleError}`,
       });
     }
 
