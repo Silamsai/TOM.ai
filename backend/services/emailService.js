@@ -1,42 +1,63 @@
+const { Resend } = require('resend');
 const nodemailer = require('nodemailer');
 const { OTP_VALIDITY_MINUTES } = require('../config/constants');
 
-// Log email config at startup so we can verify on Render logs
+// ---- Startup credential check -----------------------------------------------
+console.log(`[EmailService] RESEND_API_KEY: ${process.env.RESEND_API_KEY ? 'SET ✅' : '⚠️ NOT SET — falling back to Gmail SMTP'}`);
 console.log(`[EmailService] GMAIL_USER: ${process.env.GMAIL_USER || '⚠️ NOT SET'}`);
-console.log(`[EmailService] GMAIL_PASS: ${process.env.GMAIL_PASS ? `SET (${process.env.GMAIL_PASS.length} chars)` : '⚠️ NOT SET'}`);
+console.log(`[EmailService] GMAIL_PASS: ${process.env.GMAIL_PASS ? `SET (${process.env.GMAIL_PASS.length} chars) ✅` : '⚠️ NOT SET'}`);
 
-/** Reusable Gmail transporter — port 587 + STARTTLS (compatible with all cloud hosts including Render) */
-const createTransporter = () =>
-  nodemailer.createTransport({
+// ---- Email sender -----------------------------------------------------------
+/**
+ * Sends an email using Resend API (preferred, HTTPS-based, works on all cloud hosts)
+ * or falls back to Gmail SMTP if RESEND_API_KEY is not configured.
+ */
+const sendMail = async ({ from, to, subject, html }) => {
+  // ── Primary: Resend API (works on Render, Vercel, Railway, etc.) ──
+  if (process.env.RESEND_API_KEY) {
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { error } = await resend.emails.send({
+      from: process.env.RESEND_FROM || 'TOM.AI <onboarding@resend.dev>',
+      to,
+      subject,
+      html,
+    });
+    if (error) {
+      console.error('[EmailService] Resend error:', error);
+      throw new Error(`Resend API error: ${error.message}`);
+    }
+    console.log(`[EmailService] ✅ Email sent via Resend to: ${to}`);
+    return;
+  }
+
+  // ── Fallback: Gmail SMTP (works locally) ──
+  console.warn('[EmailService] RESEND_API_KEY not set — using Gmail SMTP fallback');
+  const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
-    secure: false,       // false = STARTTLS upgrade (required for port 587)
-    requireTLS: true,    // force TLS upgrade — never send in plain text
+    secure: false,
+    requireTLS: true,
     auth: {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_PASS,
     },
-    tls: {
-      rejectUnauthorized: false, // allow self-signed certs on some cloud hosts
-    },
+    tls: { rejectUnauthorized: false },
   });
 
-/** Shared email wrapper with retry logic */
-const sendMail = async (mailOptions, retries = 2) => {
-  const transporter = createTransporter();
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  for (let attempt = 0; attempt <= 2; attempt++) {
     try {
-      await transporter.sendMail(mailOptions);
+      await transporter.sendMail({ from, to, subject, html });
+      console.log(`[EmailService] ✅ Email sent via Gmail SMTP to: ${to}`);
       return;
     } catch (err) {
-      console.error(`[EmailService] sendMail attempt ${attempt + 1} failed:`, err.message);
-      if (attempt === retries) throw err;
+      console.error(`[EmailService] Gmail SMTP attempt ${attempt + 1} failed:`, err.message);
+      if (attempt === 2) throw err;
       await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
     }
   }
 };
 
-// ---- HTML Templates -------------------------------------------------------
+// ---- HTML Templates ---------------------------------------------------------
 
 const otpEmailTemplate = (otp, title, subtitle) => `
 <!DOCTYPE html>
@@ -75,14 +96,11 @@ const otpEmailTemplate = (otp, title, subtitle) => `
 </html>
 `;
 
-// ---- Exported Functions ---------------------------------------------------
+// ---- Exported Functions -----------------------------------------------------
 
-/**
- * Sends an OTP email for email verification during signup.
- */
 const sendOTPEmail = async (email, otp) => {
   await sendMail({
-    from: `"TOM.AI" <${process.env.GMAIL_USER}>`,
+    from: `"TOM.AI" <${process.env.GMAIL_USER || 'noreply@tomai.com'}>`,
     to: email,
     subject: '🔐 TOM.AI - Email Verification OTP',
     html: otpEmailTemplate(
@@ -93,12 +111,9 @@ const sendOTPEmail = async (email, otp) => {
   });
 };
 
-/**
- * Sends a password reset OTP email.
- */
 const sendPasswordResetEmail = async (email, otp) => {
   await sendMail({
-    from: `"TOM.AI" <${process.env.GMAIL_USER}>`,
+    from: `"TOM.AI" <${process.env.GMAIL_USER || 'noreply@tomai.com'}>`,
     to: email,
     subject: '🔐 TOM.AI - Password Reset OTP',
     html: otpEmailTemplate(
@@ -109,9 +124,6 @@ const sendPasswordResetEmail = async (email, otp) => {
   });
 };
 
-/**
- * Sends a confirmation email after a successful password reset.
- */
 const sendConfirmationEmail = async (email) => {
   const html = `
   <!DOCTYPE html>
@@ -141,16 +153,13 @@ const sendConfirmationEmail = async (email) => {
   </html>`;
 
   await sendMail({
-    from: `"TOM.AI" <${process.env.GMAIL_USER}>`,
+    from: `"TOM.AI" <${process.env.GMAIL_USER || 'noreply@tomai.com'}>`,
     to: email,
     subject: '✅ TOM.AI - Password Reset Successful',
     html,
   });
 };
 
-/**
- * Sends a reminder email for a scheduled task.
- */
 const sendTaskReminderEmail = async (email, task) => {
   const html = `
   <!DOCTYPE html>
@@ -187,7 +196,7 @@ const sendTaskReminderEmail = async (email, task) => {
   </html>`;
 
   await sendMail({
-    from: `"TOM.AI" <${process.env.GMAIL_USER}>`,
+    from: `"TOM.AI" <${process.env.GMAIL_USER || 'noreply@tomai.com'}>`,
     to: email,
     subject: `⏰ Reminder: ${task.taskName}`,
     html,
