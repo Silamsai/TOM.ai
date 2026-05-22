@@ -4,7 +4,9 @@ const { OTP_VALIDITY_MINUTES } = require('../config/constants');
 /** Reusable Gmail transporter */
 const createTransporter = () =>
   nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Use SSL/TLS for secure communication in cloud environments
     auth: {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_PASS,
