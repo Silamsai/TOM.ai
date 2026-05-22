@@ -1,15 +1,23 @@
 const nodemailer = require('nodemailer');
 const { OTP_VALIDITY_MINUTES } = require('../config/constants');
 
-/** Reusable Gmail transporter */
+// Log email config at startup so we can verify on Render logs
+console.log(`[EmailService] GMAIL_USER: ${process.env.GMAIL_USER || '⚠️ NOT SET'}`);
+console.log(`[EmailService] GMAIL_PASS: ${process.env.GMAIL_PASS ? `SET (${process.env.GMAIL_PASS.length} chars)` : '⚠️ NOT SET'}`);
+
+/** Reusable Gmail transporter — port 587 + STARTTLS (compatible with all cloud hosts including Render) */
 const createTransporter = () =>
   nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Use SSL/TLS for secure communication in cloud environments
+    port: 587,
+    secure: false,       // false = STARTTLS upgrade (required for port 587)
+    requireTLS: true,    // force TLS upgrade — never send in plain text
     auth: {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false, // allow self-signed certs on some cloud hosts
     },
   });
 
@@ -21,6 +29,7 @@ const sendMail = async (mailOptions, retries = 2) => {
       await transporter.sendMail(mailOptions);
       return;
     } catch (err) {
+      console.error(`[EmailService] sendMail attempt ${attempt + 1} failed:`, err.message);
       if (attempt === retries) throw err;
       await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
     }
