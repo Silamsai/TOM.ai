@@ -129,7 +129,7 @@ const Chat = () => {
       if (token) {
         // ── Normal Gemini AI response (MCP handles emails now) ──
         const res = await sendChatMessage(trimmed || `Please review the attached file: ${sentAttachments[0]?.fileName}`, sentAttachments);
-        const { botResponse, timestamp, tokens } = res.data.data;
+        const { botResponse, timestamp } = res.data.data;
         botText = botResponse;
 
         const botMsg = { type: 'bot', message: botText, timestamp, id: `b-${Date.now()}` };
