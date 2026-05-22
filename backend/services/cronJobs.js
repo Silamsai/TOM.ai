@@ -9,9 +9,20 @@ const startCronJobs = () => {
   cron.schedule('* * * * *', async () => {
     try {
       const now = new Date();
-      // Current HH:MM in IST timezone, since the user is likely setting the time in their local time
-      // But let's assume server local time is what they meant.
-      const currentHHMM = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+      // Current HH:MM explicitly in Indian Standard Time (IST, Asia/Kolkata), since the user sets the time in their local time.
+      // This ensures that the Render server (which runs in UTC) matches the local time set by the user.
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      const parts = formatter.formatToParts(now);
+      const hour = parts.find(p => p.type === 'hour').value;
+      const minute = parts.find(p => p.type === 'minute').value;
+      const currentHHMM = `${hour}:${minute}`;
+
+      console.log(`[Cron] Checking reminders for local IST time: ${currentHHMM} (Server UTC: ${now.toISOString()})`);
 
       // Find tasks that are pending, not notified, and have a reminderTime matching currentHHMM
       const dueTasks = await Task.find({
