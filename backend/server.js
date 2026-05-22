@@ -84,6 +84,26 @@ app.use(errorHandler);
 // Start Server
 // ============================================================
 const startServer = async () => {
+  // Validate critical env variables
+  const criticalEnvVars = [
+    'MONGODB_URI',
+    'GEMINI_API_KEY',
+    'GOOGLE_CLIENT_ID',
+    'GOOGLE_CLIENT_SECRET'
+  ];
+  console.log('\n🔍 Verifying Environment Variables:');
+  criticalEnvVars.forEach(v => {
+    if (!process.env[v]) {
+      console.warn(`  ⚠️  [WARN] ${v} is missing or empty!`);
+    } else {
+      const maskedVal = process.env[v].length > 10 
+        ? `${process.env[v].substring(0, 6)}...${process.env[v].substring(process.env[v].length - 4)}` 
+        : 'set';
+      console.log(`  ✅  ${v} is loaded (${maskedVal})`);
+    }
+  });
+  console.log('');
+
   await connectDB();
 
   const server = app.listen(PORT, () => {
