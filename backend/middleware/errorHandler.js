@@ -52,10 +52,7 @@ const errorHandler = (err, req, res, next) => {
   // ---- Default 500 ---------------------------------------------------------
   res.status(err.status || 500).json({
     success: false,
-    message:
-      process.env.NODE_ENV === 'production'
-        ? 'An unexpected server error occurred.'
-        : err.message || 'An unexpected server error occurred.',
+    message: err.message || 'An unexpected server error occurred.',
   });
 };
 
