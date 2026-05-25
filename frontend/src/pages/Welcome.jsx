@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { getToken, clearGuestProfile } from '../utils/storage';
 import { redirectToGoogle } from '../utils/googleAuth';
+import AnimatedLogo from '../components/three/AnimatedLogo';
+import MixupLayout from '../components/layout/MixupLayout';
+import WorkflowStrip from '../components/workflow/WorkflowStrip';
+import { ASSETS } from '../config/assets';
 import '../styles/welcome.css';
 
 const FEATURES = [
@@ -13,24 +18,23 @@ const FEATURES = [
 
 const Welcome = () => {
   const navigate = useNavigate();
-  const [phase, setPhase] = useState('intro'); // 'intro' | 'landing'
+  const [phase, setPhase] = useState('intro');
   const [googleError, setGoogleError] = useState('');
+  const [workflowStep, setWorkflowStep] = useState(0);
 
   useEffect(() => {
-    // Clear any old guest profile so this page always shows for non-authenticated users
     clearGuestProfile();
-    // If user has a real JWT token — go to chat
     if (getToken()) {
       navigate('/chat', { replace: true });
       return;
     }
-    // Splash screen then show landing
     const t = setTimeout(() => setPhase('landing'), 2400);
     return () => clearTimeout(t);
   }, [navigate]);
 
   const handleGoogleLogin = () => {
     setGoogleError('');
+    setWorkflowStep(0);
     try {
       redirectToGoogle();
     } catch (err) {
@@ -43,7 +47,7 @@ const Welcome = () => {
   };
 
   const handleGuestChat = () => {
-    // Allow guest access directly to chat
+    setWorkflowStep(1);
     navigate('/chat');
   };
 
@@ -53,15 +57,22 @@ const Welcome = () => {
         <div className="welcome-particles" aria-hidden="true">
           {[...Array(18)].map((_, i) => <span key={i} className="wparticle" style={{ '--i': i }} />)}
         </div>
-        <div className="welcome-intro fade-in">
+        <motion.div
+          className="welcome-intro fade-in"
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        >
           <div className="wi-orb" aria-hidden="true" />
-          <div className="wi-robot"><img src="/images/logo.png" alt="tom.ai" width="80" height="80" style={{borderRadius:'16px',objectFit:'contain'}} /></div>
+          <div className="wi-robot">
+            <AnimatedLogo size="lg" />
+          </div>
           <h1 className="wi-brand">tom.ai</h1>
           <p className="wi-sub">Your personal AI assistant</p>
           <div className="wi-dots" aria-label="Loading">
             <span /><span /><span />
           </div>
-        </div>
+        </motion.div>
       </div>
     );
   }
@@ -73,32 +84,53 @@ const Welcome = () => {
       </div>
 
       <div className="welcome-split fade-in">
-        {/* ── Left: Hero / Features ── */}
-        <div className="welcome-left" aria-hidden="true">
-          <div className="wl-brand"><img src="/images/logo.png" alt="tom.ai" width="22" height="22" style={{borderRadius:'5px',verticalAlign:'middle',marginRight:'6px'}} /> tom.ai</div>
-          <img
-            id="welcome-hero-img"
-            src="/images/welcome_hero.png"
-            alt="tom.ai AI assistant illustration"
-            className="wl-hero"
-          />
-          <div className="wl-features">
-            {FEATURES.map(f => (
-              <div key={f.title} className="wl-feature-row">
-                <span className="wl-feature-icon">{f.icon}</span>
-                <div>
-                  <div className="wl-feature-title">{f.title}</div>
-                  <div className="wl-feature-desc">{f.desc}</div>
-                </div>
+        <div className="welcome-left welcome-left--mixup">
+          <MixupLayout
+            className="welcome-mixup"
+            workflow={<WorkflowStrip activeIndex={workflowStep} />}
+          >
+            <div className="welcome-left-inner">
+              <div className="wl-brand">
+                <AnimatedLogo size="sm" /> tom.ai
               </div>
-            ))}
-          </div>
+              <img
+                id="welcome-hero-img"
+                src={ASSETS.images.hero2d}
+                alt=""
+                className="wl-hero wl-hero--overlay"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+              <div className="wl-features">
+                {FEATURES.map((f, i) => (
+                  <motion.div
+                    key={f.title}
+                    className="wl-feature-row"
+                    initial={{ opacity: 0, x: -16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.08 * i, duration: 0.4 }}
+                  >
+                    <span className="wl-feature-icon">{f.icon}</span>
+                    <div>
+                      <div className="wl-feature-title">{f.title}</div>
+                      <div className="wl-feature-desc">{f.desc}</div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </MixupLayout>
         </div>
 
-        {/* ── Right: Auth Panel ── */}
-        <div className="welcome-right">
+        <motion.div
+          className="welcome-right"
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
           <div className="wr-header">
-            <span className="wr-logo"><img src="/images/logo.png" alt="tom.ai" width="48" height="48" style={{borderRadius:'12px',objectFit:'contain'}} /></span>
+            <span className="wr-logo">
+              <AnimatedLogo size="md" />
+            </span>
             <h2>Welcome to tom.ai</h2>
             <p>Your intelligent personal assistant — powered by AI.</p>
           </div>
@@ -107,7 +139,6 @@ const Welcome = () => {
             <div className="alert alert-error" role="alert">⚠️ {googleError}</div>
           )}
 
-          {/* Google Sign-In */}
           <button
             id="welcome-google-btn"
             type="button"
@@ -124,28 +155,26 @@ const Welcome = () => {
             Continue with Google
           </button>
 
-          {/* Divider */}
           <div className="auth-divider"><span>or</span></div>
 
-          {/* Create Account */}
           <Link
             id="welcome-signup-btn"
             to="/signup"
             className="btn btn-primary btn-full btn-lg welcome-cta"
+            onClick={() => setWorkflowStep(0)}
           >
             📧 Create Account with Email
           </Link>
 
-          {/* Already have account */}
           <Link
             id="welcome-login-link"
             to="/login"
             className="btn btn-secondary btn-full"
+            onClick={() => setWorkflowStep(0)}
           >
             Sign In
           </Link>
 
-          {/* Guest option */}
           <div className="wr-guest">
             <button
               id="welcome-guest-btn"
@@ -160,7 +189,7 @@ const Welcome = () => {
           <p className="wr-note">
             By signing up, you agree to our terms. Free forever — no credit card required.
           </p>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

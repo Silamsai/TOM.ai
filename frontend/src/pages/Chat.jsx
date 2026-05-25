@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import { sendChatMessage, getChatHistory } from '../services/api';
 import ChatMessage from '../components/ChatMessage';
 import Navbar from '../components/Navbar';
 import ChatSidebar from '../components/ChatSidebar';
-import { getToken, getUser, getGuestProfile } from '../utils/storage';
+import AnimatedLogo from '../components/three/AnimatedLogo';
+import { ASSETS, FEATURES } from '../config/assets';
+import { getToken, getUser, getGuestProfile, getTheme, setTheme as saveTheme } from '../utils/storage';
 import { generateGuestResponse } from '../utils/guestAI';
 import {
   getOrCreateCurrentSession, getSession,
@@ -11,6 +13,8 @@ import {
 } from '../utils/chatSessions';
 import '../styles/pages.css';
 import '../styles/sidebar.css';
+
+const Scene3D = lazy(() => import('../components/three/Scene3D'));
 
 /** Time-based greeting */
 const getTimeGreeting = (name) => {
@@ -35,7 +39,7 @@ const Chat = () => {
   const [loading,     setLoading]        = useState(false);
   const [error,       setError]          = useState('');
 
-  const [theme,       setTheme]          = useState(() => localStorage.getItem('tom_theme') || 'dark');
+  const [theme,       setTheme]          = useState(getTheme);
 
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
@@ -44,7 +48,7 @@ const Chat = () => {
   useEffect(() => {
     if (theme === 'light') document.body.classList.add('light-mode');
     else document.body.classList.remove('light-mode');
-    localStorage.setItem('tom_theme', theme);
+    saveTheme(theme);
   }, [theme]);
 
   const handleFileUpload = (e) => {
@@ -246,12 +250,17 @@ const Chat = () => {
             {showEmpty ? (
               /* ── ChatGPT-style empty state: big logo + tom.ai + subtitle ── */
               <div className="chat-empty fade-in">
+                {FEATURES.use3d && !FEATURES.prefersReducedMotion() && (
+                  <Suspense fallback={null}>
+                    <Scene3D
+                      modelUrl={ASSETS.models.chatAmbient}
+                      className="chat-empty-3d"
+                      scale={0.8}
+                    />
+                  </Suspense>
+                )}
                 <div className="chat-welcome-hero">
-                  <img
-                    src="/images/logo.png"
-                    alt="tom.ai"
-                    className="chat-welcome-logo"
-                  />
+                  <AnimatedLogo size="lg" className="chat-welcome-logo" />
                   <h2 className="chat-welcome-name">tom.ai</h2>
                   <p className="chat-welcome-sub">Your personal AI assistant — ask me anything</p>
                 </div>

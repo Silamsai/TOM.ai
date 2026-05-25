@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { getAllSessions, createSession, deleteSession, setCurrentId, getCurrentId, renameSession } from '../utils/chatSessions';
 import { getGoogleAuthUrl, getPublicMcps } from '../services/api';
+import {
+  IconPlus, IconChat, IconTrash, IconClose, IconPencil,
+  IconConnect, IconSliders, IconPlug, IconLock, IconCheck, IconLoader,
+} from './icons/UiIcons';
 import '../styles/sidebar.css';
 
 const timeAgo = (ts) => {
@@ -10,13 +15,6 @@ const timeAgo = (ts) => {
   if (h<24) return `${h}h ago`; if (d<7)  return `${d}d ago`;
   return new Date(ts).toLocaleDateString('en-IN',{month:'short',day:'numeric'});
 };
-
-const IconPlus  = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
-const IconChat  = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>;
-const IconTrash = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>;
-const IconClose = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
-const IconMCP   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><circle cx="7" cy="10" r="1.5"/><circle cx="12" cy="10" r="1.5"/><circle cx="17" cy="10" r="1.5"/></svg>;
-const IconEdit  = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
 
 /* ── Hardcoded MCP Applications List (Editable in Code Only) ── */
 const MCP_APPS = [
@@ -58,8 +56,8 @@ const MCP_APPS = [
   }
 ];
 
-/* ── MCP Permission Modal ── */
-const MCPModal = ({ onClose }) => {
+/* ── Connect apps modal ── */
+const ConnectModal = ({ onClose }) => {
   const [mcpApps, setMcpApps] = useState(MCP_APPS);
   const [connecting, setConnecting] = useState(null); // tracks which app is connecting
   const [connected,  setConnected]  = useState([]);
@@ -110,7 +108,7 @@ const MCPModal = ({ onClose }) => {
   };
 
   const renderAppIcon = (iconStr, name) => {
-    if (!iconStr) return <span>🔌</span>;
+    if (!iconStr) return <IconPlug size={22} />;
     const trimmed = iconStr.trim();
     if (trimmed.startsWith('<svg')) {
       return <span className="mcp-svg-wrapper" dangerouslySetInnerHTML={{ __html: trimmed }} />;
@@ -127,14 +125,13 @@ const MCPModal = ({ onClose }) => {
         <div className="mcp-header">
           <div className="mcp-title">
             <img src="/images/logo.png" alt="tom.ai" width="22" height="22" style={{borderRadius:'6px',objectFit:'contain'}} />
-            <span>Connect Apps via MCP</span>
+            <span>Connect</span>
           </div>
           <button className="mcp-close" onClick={onClose} aria-label="Close modal"><IconClose /></button>
         </div>
 
         <p className="mcp-desc">
-          Connect your local apps to TOM.AI through the <strong>Model Context Protocol (MCP)</strong>.
-          Once connected, TOM.AI can read and act on your data with your permission.
+          Link your apps and services to tom.ai. Once connected, the assistant can work with your data only when you allow it.
         </p>
 
         <div className="mcp-apps">
@@ -153,10 +150,14 @@ const MCPModal = ({ onClose }) => {
                   className={`mcp-connect-btn ${isConn ? 'connected' : ''}`}
                   onClick={() => isConn ? handleDisconnect(app.id) : handleConnect(app.id)}
                   disabled={isLoading}
-                  onMouseEnter={(e) => { if (isConn) e.target.innerText = 'Disconnect'; }}
-                  onMouseLeave={(e) => { if (isConn) e.target.innerText = '✓ Connected'; }}
                 >
-                  {isLoading ? '⏳' : isConn ? '✓ Connected' : isGmail ? '🔗 Connect Gmail' : 'Allow'}
+                  {isLoading ? (
+                    <span className="mcp-btn-inner"><IconLoader size={12} /> Connecting</span>
+                  ) : isConn ? (
+                    <span className="mcp-btn-inner"><IconCheck size={12} /> Connected</span>
+                  ) : (
+                    <span className="mcp-btn-inner"><IconConnect size={12} /> {isGmail ? 'Connect Gmail' : 'Connect'}</span>
+                  )}
                 </button>
               </div>
             );
@@ -164,7 +165,8 @@ const MCPModal = ({ onClose }) => {
         </div>
 
         <p className="mcp-note">
-          🔒 All connections are local. TOM.AI only accesses data you explicitly allow.
+          <IconLock size={12} />
+          <span>Connections stay on your account. tom.ai only accesses what you approve.</span>
         </p>
       </div>
     </div>
@@ -173,8 +175,10 @@ const MCPModal = ({ onClose }) => {
 
 /* ── Main Sidebar ── */
 const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthenticated, userName }) => {
+  const location = useLocation();
   const [, forceUpdate] = useState(0);
-  const [mcpOpen, setMcpOpen] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(false);
+  const isSettingsActive = location.pathname === '/settings';
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [editTitleText, setEditTitleText] = useState('');
 
@@ -276,7 +280,7 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
               {editingSessionId !== s.id && (
                 <div className="ss-actions">
                   <button className="ss-rename" onClick={e => handleStartRename(e, s)} aria-label={`Rename: ${s.title}`}>
-                    <IconEdit />
+                    <IconPencil />
                   </button>
                   <button className="ss-delete" onClick={e => handleDelete(e, s.id)} aria-label={`Delete: ${s.title}`}>
                     <IconTrash />
@@ -289,14 +293,32 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
 
         {/* Footer */}
         <div className="sidebar-footer">
-          <div className="sidebar-divider" style={{marginBottom:'10px'}} />
+          <div className="sidebar-divider" style={{ marginBottom: '10px' }} />
 
-          {/* Connect MCP */}
-          <button className="sidebar-mcp-btn" onClick={() => setMcpOpen(true)}>
-            <IconMCP />
-            <span>Connect MCP</span>
-            <span className="mcp-badge">Apps</span>
-          </button>
+          <div className="sidebar-footer-actions">
+            <button
+              type="button"
+              className="sidebar-footer-btn sidebar-connect-btn"
+              onClick={() => setConnectOpen(true)}
+            >
+              <span className="sidebar-footer-icon" aria-hidden="true">
+                <IconConnect size={16} />
+              </span>
+              <span className="sidebar-footer-label">Connect</span>
+            </button>
+
+            <Link
+              to="/settings"
+              id="sidebar-settings"
+              className={`sidebar-footer-btn sidebar-settings-btn${isSettingsActive ? ' active' : ''}`}
+              onClick={() => { if (window.innerWidth < 1024) onClose(); }}
+            >
+              <span className="sidebar-footer-icon" aria-hidden="true">
+                <IconSliders size={16} />
+              </span>
+              <span className="sidebar-footer-label">Settings</span>
+            </Link>
+          </div>
 
           <span className="sf-note">
             {isAuthenticated ? `Synced · ${userName || ''}` : 'Chats saved locally'}
@@ -304,8 +326,7 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
         </div>
       </aside>
 
-      {/* MCP Modal */}
-      {mcpOpen && <MCPModal onClose={() => setMcpOpen(false)} />}
+      {connectOpen && <ConnectModal onClose={() => setConnectOpen(false)} />}
     </>
   );
 };

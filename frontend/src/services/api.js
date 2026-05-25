@@ -119,4 +119,21 @@ export const fetchGmailEmails = (query = '', max = 10) =>
 export const getPublicMcps = () =>
   api.get('/admin/mcps-public');
 
+// ============================================================
+// USER / SETTINGS
+// ============================================================
+export const getCurrentUser = () => api.get('/user/me');
+
+export const updateProfile = (data) => api.patch('/user/profile', data);
+
+export const getUserAccess = () => api.get('/user/access');
+
+export const getUserStorage = () => api.get('/user/storage');
+
+export const clearServerChatHistory = () => api.delete('/user/chat-history');
+
+export const revokeGmailAccess = () => api.post('/oauth/revoke/gmail');
+
+export const revokeCalendarAccess = () => api.post('/oauth/revoke/calendar');
+
 export default api;

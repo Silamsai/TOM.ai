@@ -213,6 +213,17 @@
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   color: var(--text-dim); text-align: center; gap: 20px; padding: 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-empty-3d {
+  position: absolute;
+  inset: 0;
+  max-height: 320px;
+  margin: auto;
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 /* ── ChatGPT-style welcome hero ── */
@@ -220,8 +231,11 @@
   display: flex; flex-direction: column;
   align-items: center; gap: 14px;
 }
-.chat-welcome-logo {
-  width: 80px; height: 80px;
+.chat-welcome-logo,
+.chat-welcome-logo .animated-logo__img,
+.chat-welcome-logo .animated-logo__canvas {
+  width: 80px;
+  height: 80px;
   object-fit: contain;
   border-radius: 20px;
   animation: float 3.5s ease-in-out infinite;

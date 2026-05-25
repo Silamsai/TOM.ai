@@ -1,0 +1,53 @@
+.mixup-layout {
+  position: relative;
+  min-height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.mixup-layout__canvas {
+  z-index: 0;
+  opacity: 0.55;
+}
+
+.mixup-layout__bg-fallback {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.05), transparent 55%);
+  z-index: 0;
+}
+
+.mixup-layout__gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, transparent 50%, rgba(0, 0, 0, 0.85) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.mixup-layout__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.mixup-layout__panel {
+  position: relative;
+  z-index: 2;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.mixup-layout__workflow {
+  position: relative;
+  z-index: 3;
+  padding: 20px 24px 28px;
+  border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.35);
+}
