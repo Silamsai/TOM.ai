@@ -69,7 +69,7 @@ const Welcome = () => {
   return (
     <div className="welcome-page welcome-page--card">
 
-      {/* Full-screen background video — scaled to crop bottom-right logo */}
+      {/* Full-screen background video */}
       <div className="welcome-video-bg" aria-hidden="true">
         <video
           src="/videos/tomeyes.mp4"
@@ -81,9 +81,6 @@ const Welcome = () => {
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            objectPosition: 'top left',
-            transform: 'scale(1.18)',
-            transformOrigin: 'top left',
           }}
         />
         <div className="welcome-video-overlay" />
