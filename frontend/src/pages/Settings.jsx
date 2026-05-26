@@ -2,15 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import LoadingSpinner from '../components/LoadingSpinner';
-import {
-  getCurrentUser,
-  updateProfile,
-  getUserAccess,
-  getUserStorage,
-  clearServerChatHistory,
-  revokeGmailAccess,
-  revokeCalendarAccess,
-} from '../services/api';
+import { getCurrentUser, updateProfile } from '../services/api';
 import {
   getToken,
   getUser,
@@ -21,23 +13,23 @@ import {
   getNotificationsPref,
   setNotificationsPref,
   clearLocalAppData,
+  getGuestProfile,
+  setGuestProfile,
 } from '../utils/storage';
 import { clearAllSessions, getAllSessions } from '../utils/chatSessions';
-import { getLocalStorageUsage, formatBytes, getGuestSessionStats } from '../utils/storageStats';
 import {
-  IconProfile, IconAccount, IconAccess, IconChatHistory,
-  IconStorage, IconAppearance, IconBell,
+  IconProfile,
+  IconStorage,
+  IconAppearance,
+  IconBell,
 } from '../components/icons/UiIcons';
 import '../styles/settings.css';
 
-const NAV = [
-  { id: 'profile', label: 'Profile', Icon: IconProfile, auth: true },
-  { id: 'account', label: 'Account', Icon: IconAccount, auth: true },
-  { id: 'access', label: 'Access', Icon: IconAccess, auth: true },
-  { id: 'chat', label: 'Chat history', Icon: IconChatHistory, auth: false },
-  { id: 'storage', label: 'Storage', Icon: IconStorage, auth: false },
-  { id: 'appearance', label: 'Appearance', Icon: IconAppearance, auth: false },
-  { id: 'notifications', label: 'Notifications', Icon: IconBell, auth: false },
+const TABS = [
+  { id: 'profile', label: 'Profile & Account', Icon: IconProfile },
+  { id: 'appearance', label: 'Appearance', Icon: IconAppearance },
+  { id: 'storage', label: 'Storage & Cache', Icon: IconStorage },
+  { id: 'notifications', label: 'Notifications', Icon: IconBell },
 ];
 
 const formatDate = (d) => {
@@ -48,125 +40,147 @@ const formatDate = (d) => {
 const Settings = () => {
   const navigate = useNavigate();
   const isLoggedIn = !!getToken();
-  const cachedUser = getUser();
 
-  const [section, setSection] = useState(() => (getToken() ? 'profile' : 'appearance'));
+  const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(isLoggedIn);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  const [profile, setProfile] = useState({ name: cachedUser?.name || '', email: cachedUser?.email || '' });
-  const [account, setAccount] = useState(null);
-  const [access, setAccess] = useState(null);
-  const [serverStorage, setServerStorage] = useState(null);
-  const [localUsage, setLocalUsage] = useState(() => getLocalStorageUsage());
-  const [guestStats, setGuestStats] = useState(() => getGuestSessionStats());
-  const [theme, setThemeState] = useState(getTheme());
-  const [notifPref, setNotifPref] = useState(getNotificationsPref());
-  const [notifPermission, setNotifPermission] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
-  );
+  // Form states
+  const [displayName, setDisplayName] = useState('');
+  const [accountInfo, setAccountInfo] = useState(null);
+  const [theme, setThemeState] = useState(() => getTheme());
+  const [notifications, setNotifications] = useState(() => getNotificationsPref());
+  const [localChatsCount, setLocalChatsCount] = useState(0);
 
-  const refreshLocalStats = () => {
-    setLocalUsage(getLocalStorageUsage());
-    setGuestStats(getGuestSessionStats());
+  const showMsg = (msg, isError = false) => {
+    if (isError) {
+      setError(msg);
+      setMessage('');
+    } else {
+      setMessage(msg);
+      setError('');
+    }
+    setTimeout(() => {
+      setMessage('');
+      setError('');
+    }, 3500);
   };
 
   const loadSettings = useCallback(async () => {
+    const cachedUser = getUser();
     if (!isLoggedIn) {
+      const gp = getGuestProfile();
+      setDisplayName(gp?.name || 'Guest User');
       setLoading(false);
-      if (!cachedUser) setSection('appearance');
       return;
     }
+
     setLoading(true);
     setError('');
     try {
-      const [meRes, accessRes, storageRes] = await Promise.all([
-        getCurrentUser(),
-        getUserAccess(),
-        getUserStorage(),
-      ]);
-      const u = meRes.data.data;
-      setProfile({ name: u.name || '', email: u.email || '' });
-      setAccount(u);
-      setUser(u);
-      setAccess(accessRes.data.data);
-      setServerStorage(storageRes.data.data);
+      const res = await getCurrentUser();
+      const u = res.data.data;
+      setDisplayName(u.name || '');
+      setAccountInfo(u);
+      setUser(u); // Sync local storage with fresh DB model
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load settings.');
+      // Fallback to cache if offline/failed
+      setDisplayName(cachedUser?.name || '');
+      setAccountInfo(cachedUser);
+      showMsg('Could not sync with server. Showing offline settings.', true);
     } finally {
       setLoading(false);
-      refreshLocalStats();
     }
-  }, [isLoggedIn, cachedUser]);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     loadSettings();
+
+    // Get count of local chat sessions
+    try {
+      const sessions = getAllSessions();
+      setLocalChatsCount(sessions.length);
+    } catch {
+      setLocalChatsCount(0);
+    }
   }, [loadSettings]);
 
+  // Handle Theme Change
   useEffect(() => {
-    if (theme === 'light') document.body.classList.add('light-mode');
-    else document.body.classList.remove('light-mode');
+    if (theme === 'light') {
+      document.body.classList.add('light-mode');
+    } else {
+      document.body.classList.remove('light-mode');
+    }
     setTheme(theme);
   }, [theme]);
 
-  const showMsg = (msg, isError = false) => {
-    if (isError) setError(msg);
-    else setMessage(msg);
-    setTimeout(() => { setMessage(''); setError(''); }, 3500);
-  };
-
   const handleSaveProfile = async () => {
-    if (!profile.name.trim()) return showMsg('Name is required.', true);
+    if (!displayName.trim()) {
+      showMsg('Display name cannot be empty.', true);
+      return;
+    }
+
     setSaving(true);
-    try {
-      const res = await updateProfile({ name: profile.name.trim() });
-      setUser(res.data.data);
-      setAccount(res.data.data);
-      showMsg('Profile saved.');
-    } catch (err) {
-      showMsg(err.response?.data?.message || 'Could not save profile.', true);
-    } finally {
-      setSaving(false);
+    if (isLoggedIn) {
+      try {
+        const res = await updateProfile({ name: displayName.trim() });
+        const updatedUser = res.data.data;
+        setUser(updatedUser);
+        setAccountInfo(updatedUser);
+        showMsg('Profile updated successfully.');
+      } catch (err) {
+        showMsg(err.response?.data?.message || 'Failed to update profile.', true);
+      } finally {
+        setSaving(false);
+      }
+    } else {
+      try {
+        const gp = getGuestProfile() || {};
+        gp.name = displayName.trim();
+        setGuestProfile(gp);
+        showMsg('Local profile updated.');
+      } catch {
+        showMsg('Failed to update local profile.', true);
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
-  const handleClearServerChat = async () => {
-    if (!window.confirm('Delete all chat history from the server? This cannot be undone.')) return;
-    try {
-      const res = await clearServerChatHistory();
-      showMsg(`Cleared ${res.data.data.deletedCount} messages from server.`);
-      const storageRes = await getUserStorage();
-      setServerStorage(storageRes.data.data);
-    } catch (err) {
-      showMsg(err.response?.data?.message || 'Failed to clear chat history.', true);
-    }
+  const handleNotificationChange = (e) => {
+    const val = e.target.checked;
+    setNotifications(val);
+    setNotificationsPref(val);
+    showMsg(`Local notifications turned ${val ? 'ON' : 'OFF'}.`);
   };
 
   const handleClearLocalChats = () => {
-    if (!window.confirm('Delete all local chat sessions on this device?')) return;
-    clearAllSessions();
-    refreshLocalStats();
-    showMsg('Local chat sessions cleared.');
-  };
-
-  const handleClearLocalData = () => {
-    if (!window.confirm('Clear cached app data on this device? You will stay signed in.')) return;
-    const n = clearLocalAppData({ includeAuth: false });
-    refreshLocalStats();
-    showMsg(`Cleared ${n} local items.`);
-  };
-
-  const handleRevoke = async (type) => {
+    if (!window.confirm('Delete all local chat sessions on this device? This cannot be undone.')) return;
     try {
-      if (type === 'gmail') await revokeGmailAccess();
-      if (type === 'calendar') await revokeCalendarAccess();
-      const accessRes = await getUserAccess();
-      setAccess(accessRes.data.data);
-      showMsg(`${type} access revoked.`);
-    } catch (err) {
-      showMsg(err.response?.data?.message || 'Failed to revoke access.', true);
+      clearAllSessions();
+      setLocalChatsCount(0);
+      showMsg('Local chat sessions cleared.');
+    } catch {
+      showMsg('Failed to clear local chats.', true);
+    }
+  };
+
+  const handleResetCache = () => {
+    if (!window.confirm('Reset all cached app data? You will remain signed in, but local settings/history will clear.')) return;
+    try {
+      clearLocalAppData({ includeAuth: false });
+      setThemeState('dark');
+      setNotifications(false);
+      setLocalChatsCount(0);
+      if (!isLoggedIn) {
+        setDisplayName('Guest User');
+      }
+      showMsg('All application cache reset.');
+    } catch {
+      showMsg('Failed to reset app cache.', true);
     }
   };
 
@@ -175,212 +189,75 @@ const Settings = () => {
     navigate('/');
   };
 
-  const pickSection = (id) => {
-    const item = NAV.find((n) => n.id === id);
-    if (item?.auth && !isLoggedIn) return;
-    setSection(id);
-  };
-
-  const localSessions = getAllSessions().length;
-
   const renderProfile = () => (
     <section className="settings-section" id="settings-profile">
       <div className="settings-section-header">
-        <h2>Profile</h2>
-        <p>Your display name and photo shown in chat.</p>
+        <h2>Profile & Account</h2>
+        <p>Manage your identity and authentication status.</p>
       </div>
-      {!isLoggedIn ? (
-        <div className="settings-guest-banner">
-          <Link to="/login">Sign in</Link> to edit your profile.
+
+      <div className="settings-profile-card">
+        <div className="settings-avatar">
+          {isLoggedIn && accountInfo?.picture ? (
+            <img src={accountInfo.picture} alt={displayName} referrerPolicy="no-referrer" />
+          ) : (
+            (displayName || '?').charAt(0).toUpperCase()
+          )}
         </div>
-      ) : (
-        <>
-          <div className="settings-profile-card">
-            <div className="settings-avatar">
-              {account?.picture ? (
-                <img src={account.picture} alt="" referrerPolicy="no-referrer" />
-              ) : (
-                (profile.name || profile.email || '?').charAt(0).toUpperCase()
-              )}
-            </div>
-            <div>
-              <div style={{ fontWeight: 600 }}>{profile.name || 'User'}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{profile.email}</div>
-            </div>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: '16px' }}>{displayName || 'User'}</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-dim)' }}>
+            {isLoggedIn ? accountInfo?.email : 'Local Guest Account'}
           </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="settings-name">Display name</label>
-            <input
-              id="settings-name"
-              className="form-input"
-              value={profile.name}
-              onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
-              maxLength={80}
-            />
-          </div>
-          <button className="btn btn-primary" onClick={handleSaveProfile} disabled={saving}>
-            {saving ? <LoadingSpinner size="small" /> : 'Save profile'}
-          </button>
-        </>
-      )}
-    </section>
-  );
-
-  const renderAccount = () => (
-    <section className="settings-section" id="settings-account">
-      <div className="settings-section-header">
-        <h2>Account</h2>
-        <p>Email, sign-in method, and security.</p>
+        </div>
       </div>
-      {!isLoggedIn ? (
-        <div className="settings-guest-banner"><Link to="/login">Sign in</Link> to view account details.</div>
-      ) : (
-        <>
-          <div className="settings-row">
-            <div className="settings-row-label">
-              <strong>Email</strong>
-              <span>{account?.email || '—'}</span>
-            </div>
-            <span className="settings-badge settings-badge--on">Verified</span>
-          </div>
-          <div className="settings-row">
-            <div className="settings-row-label">
-              <strong>Sign-in method</strong>
-              <span>{account?.signupMethod === 'google' ? 'Google' : 'Email & password'}</span>
-            </div>
-          </div>
-          <div className="settings-row">
-            <div className="settings-row-label">
-              <strong>Member since</strong>
-              <span>{formatDate(account?.createdAt)}</span>
-            </div>
-          </div>
-          <div className="settings-row">
-            <div className="settings-row-label">
-              <strong>Last login</strong>
-              <span>{formatDate(account?.lastLogin)}</span>
-            </div>
-          </div>
-          <div className="settings-actions">
-            <Link to="/forgot-password" className="btn btn-secondary btn-sm">Change password</Link>
-            <button type="button" className="btn btn-danger btn-sm" onClick={handleLogout}>Log out</button>
-          </div>
-        </>
-      )}
-    </section>
-  );
 
-  const renderAccess = () => (
-    <section className="settings-section" id="settings-access">
-      <div className="settings-section-header">
-        <h2>Access & integrations</h2>
-        <p>Manage what tom.ai can access on your behalf.</p>
+      <div className="form-group" style={{ marginBottom: '24px' }}>
+        <label className="form-label" htmlFor="settings-name">Display Name</label>
+        <input
+          id="settings-name"
+          className="form-input"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          maxLength={80}
+          placeholder="Enter display name"
+        />
       </div>
-      {!isLoggedIn ? (
-        <div className="settings-guest-banner"><Link to="/login">Sign in</Link> to manage integrations.</div>
-      ) : (
-        <>
-          {['gmail', 'calendar', 'tasks'].map((key) => {
-            const integ = access?.integrations?.[key] || {};
-            const label = key.charAt(0).toUpperCase() + key.slice(1);
-            return (
-              <div key={key} className="settings-row">
-                <div className="settings-row-label">
-                  <strong>{label}</strong>
-                  <span>{integ.connected ? 'Connected' : 'Not connected'}</span>
-                </div>
-                <span className={`settings-badge ${integ.enabled ? 'settings-badge--on' : 'settings-badge--off'}`}>
-                  {integ.enabled ? 'Allowed' : 'Off'}
-                </span>
-                {integ.connected && (key === 'gmail' || key === 'calendar') && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => handleRevoke(key)}
-                  >
-                    Revoke
-                  </button>
-                )}
+
+      <button className="btn btn-primary" onClick={handleSaveProfile} disabled={saving} style={{ marginBottom: '24px' }}>
+        {saving ? <LoadingSpinner size="small" /> : 'Save Display Name'}
+      </button>
+
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: '10px' }}>
+        <h3>Account details</h3>
+        {isLoggedIn ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+            <div className="settings-row" style={{ border: 'none', padding: '4px 0' }}>
+              <div className="settings-row-label">
+                <strong>Sign-in method</strong>
+                <span>{accountInfo?.signupMethod === 'google' ? 'Google Social Auth' : 'Email & Password'}</span>
               </div>
-            );
-          })}
-          <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 12 }}>
-            Connect apps from the chat sidebar → Connect MCP.
-          </p>
-        </>
-      )}
-    </section>
-  );
-
-  const renderChatHistory = () => (
-    <section className="settings-section" id="settings-chat">
-      <div className="settings-section-header">
-        <h2>Chat history</h2>
-        <p>Manage conversations stored on this device and on the server.</p>
-      </div>
-      <div className="settings-stat-grid">
-        <div className="settings-stat">
-          <div className="settings-stat-num">{localSessions}</div>
-          <div className="settings-stat-label">Local sessions</div>
-        </div>
-        <div className="settings-stat">
-          <div className="settings-stat-num">{guestStats.messages}</div>
-          <div className="settings-stat-label">Local messages</div>
-        </div>
-        <div className="settings-stat">
-          <div className="settings-stat-num">{isLoggedIn ? (serverStorage?.chatMessages ?? '…') : '—'}</div>
-          <div className="settings-stat-label">Server messages</div>
-        </div>
-      </div>
-      <div className="settings-actions">
-        <button type="button" className="btn btn-secondary btn-sm" onClick={handleClearLocalChats}>
-          Clear local chats
-        </button>
-        {isLoggedIn && (
-          <button type="button" className="btn btn-danger btn-sm" onClick={handleClearServerChat}>
-            Clear server history
-          </button>
-        )}
-      </div>
-      {!isLoggedIn && (
-        <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 12 }}>
-          Sign in to sync and manage chat history on the server.
-        </p>
-      )}
-    </section>
-  );
-
-  const renderStorage = () => (
-    <section className="settings-section" id="settings-storage">
-      <div className="settings-section-header">
-        <h2>Storage & data</h2>
-        <p>See how much space tom.ai uses and free up room.</p>
-      </div>
-      <div className="settings-stat-grid">
-        <div className="settings-stat">
-          <div className="settings-stat-num">{formatBytes(localUsage.bytes)}</div>
-          <div className="settings-stat-label">Browser storage</div>
-        </div>
-        {isLoggedIn && (
-          <>
-            <div className="settings-stat">
-              <div className="settings-stat-num">{serverStorage?.tasks ?? 0}</div>
-              <div className="settings-stat-label">Tasks</div>
             </div>
-            <div className="settings-stat">
-              <div className="settings-stat-num">{serverStorage?.ragDocuments ?? 0}</div>
-              <div className="settings-stat-label">Memory (RAG)</div>
+            <div className="settings-row" style={{ border: 'none', padding: '4px 0' }}>
+              <div className="settings-row-label">
+                <strong>Member since</strong>
+                <span>{formatDate(accountInfo?.createdAt)}</span>
+              </div>
             </div>
-          </>
+            <div className="settings-actions" style={{ marginTop: '12px' }}>
+              {accountInfo?.signupMethod !== 'google' && (
+                <Link to="/forgot-password" className="btn btn-secondary btn-sm">Change Password</Link>
+              )}
+              <button type="button" className="btn btn-danger btn-sm" onClick={handleLogout}>Log Out</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginTop: '12px' }}>
+            <div className="settings-guest-banner" style={{ margin: 0 }}>
+              You are currently using <strong>tom.ai</strong> as a guest. Your chats are saved only on this device. <Link to="/login">Sign In</Link> to sync your messages, tasks, and memory to the cloud.
+            </div>
+          </div>
         )}
-      </div>
-      <div className="settings-actions">
-        <button type="button" className="btn btn-secondary btn-sm" onClick={handleClearLocalData}>
-          Clear local cache
-        </button>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={refreshLocalStats}>
-          Refresh stats
-        </button>
       </div>
     </section>
   );
@@ -389,22 +266,62 @@ const Settings = () => {
     <section className="settings-section" id="settings-appearance">
       <div className="settings-section-header">
         <h2>Appearance</h2>
-        <p>Theme and display preferences.</p>
+        <p>Customize the visual styling of tom.ai.</p>
       </div>
+
       <div className="settings-row">
         <div className="settings-row-label">
-          <strong>Theme</strong>
-          <span>Dark or light mode across the app</span>
+          <strong>Theme Preference</strong>
+          <span>Choose between Light and Dark visual styles</span>
         </div>
         <select
           className="form-input form-select"
-          style={{ width: 'auto', minWidth: 120 }}
+          style={{ width: 'auto', minWidth: '140px', padding: '8px 12px' }}
           value={theme}
           onChange={(e) => setThemeState(e.target.value)}
         >
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
+          <option value="dark">Dark Mode</option>
+          <option value="light">Light Mode</option>
         </select>
+      </div>
+    </section>
+  );
+
+  const renderStorage = () => (
+    <section className="settings-section" id="settings-storage">
+      <div className="settings-section-header">
+        <h2>Storage & Cache</h2>
+        <p>Monitor and manage local storage allocations.</p>
+      </div>
+
+      <div className="settings-stat-grid" style={{ marginBottom: '24px' }}>
+        <div className="settings-stat">
+          <div className="settings-stat-num">{localChatsCount}</div>
+          <div className="settings-stat-label">Local Chats</div>
+        </div>
+        <div className="settings-stat">
+          <div className="settings-stat-num">{isLoggedIn ? 'Cloud Sync' : 'Guest'}</div>
+          <div className="settings-stat-label">Backup Status</div>
+        </div>
+        <div className="settings-stat">
+          <div className="settings-stat-num">{theme === 'dark' ? 'Dark' : 'Light'}</div>
+          <div className="settings-stat-label">Selected Theme</div>
+        </div>
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+        <h3>Maintenance Tools</h3>
+        <p style={{ fontSize: '13px', color: 'var(--text-dim)', marginBottom: '16px' }}>
+          Free up space or reset configurations on this device.
+        </p>
+        <div className="settings-actions">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={handleClearLocalChats}>
+            Clear Local Chats
+          </button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={handleResetCache}>
+            Reset Cache
+          </button>
+        </div>
       </div>
     </section>
   );
@@ -413,56 +330,31 @@ const Settings = () => {
     <section className="settings-section" id="settings-notifications">
       <div className="settings-section-header">
         <h2>Notifications</h2>
-        <p>Browser alerts for tasks and reminders.</p>
+        <p>Manage how you receive alerts and task reminders.</p>
       </div>
+
       <div className="settings-row">
         <div className="settings-row-label">
-          <strong>Browser permission</strong>
-          <span>{notifPermission}</span>
+          <strong>Task Reminders</strong>
+          <span>Receive notifications for task deadlines and reminders (this device)</span>
         </div>
-        {notifPermission === 'default' && (
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={async () => {
-              if ('Notification' in window) {
-                const p = await Notification.requestPermission();
-                setNotifPermission(p);
-              }
-            }}
-          >
-            Allow notifications
-          </button>
-        )}
-      </div>
-      <div className="settings-row">
-        <div className="settings-row-label">
-          <strong>Task reminders in browser</strong>
-          <span>Show alerts when you add tasks (this device)</span>
-        </div>
-        <label className="settings-badge settings-badge--on" style={{ cursor: 'pointer' }}>
+        <label className="settings-badge settings-badge--on" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <input
             type="checkbox"
-            checked={notifPref}
-            onChange={(e) => {
-              setNotifPref(e.target.checked);
-              setNotificationsPref(e.target.checked);
-            }}
-            style={{ marginRight: 6 }}
+            checked={notifications}
+            onChange={handleNotificationChange}
+            style={{ margin: 0 }}
           />
-          {notifPref ? 'On' : 'Off'}
+          <span>{notifications ? 'Enabled' : 'Disabled'}</span>
         </label>
       </div>
     </section>
   );
 
-  const sectionMap = {
+  const tabRenderers = {
     profile: renderProfile,
-    account: renderAccount,
-    access: renderAccess,
-    chat: renderChatHistory,
-    storage: renderStorage,
     appearance: renderAppearance,
+    storage: renderStorage,
     notifications: renderNotifications,
   };
 
@@ -473,18 +365,17 @@ const Settings = () => {
         <div className="settings-container">
           <nav className="settings-nav" aria-label="Settings sections">
             <div className="settings-nav-title">Settings</div>
-            {NAV.map((item) => {
-              const locked = item.auth && !isLoggedIn;
-              const NavIcon = item.Icon;
+            {TABS.map((item) => {
+              const TabIcon = item.Icon;
               return (
                 <button
                   key={item.id}
                   type="button"
-                  className={`settings-nav-btn ${section === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`}
-                  onClick={() => pickSection(item.id)}
-                  title={locked ? 'Sign in required' : item.label}
+                  className={`settings-nav-btn ${activeTab === item.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(item.id)}
+                  title={item.label}
                 >
-                  <span className="settings-nav-icon"><NavIcon size={16} /></span>
+                  <span className="settings-nav-icon"><TabIcon size={16} /></span>
                   <span className="settings-nav-label">{item.label}</span>
                 </button>
               );
@@ -495,9 +386,9 @@ const Settings = () => {
             {message && <div className="alert alert-success">{message}</div>}
             {error && <div className="alert alert-error">{error}</div>}
             {loading ? (
-              <LoadingSpinner size="medium" text="Loading settings…" />
+              <LoadingSpinner size="medium" text="Syncing settings with server…" />
             ) : (
-              sectionMap[section]?.()
+              tabRenderers[activeTab]?.()
             )}
           </div>
         </div>
