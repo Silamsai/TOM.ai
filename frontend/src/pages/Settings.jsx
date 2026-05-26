@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ChatSidebar, { ConnectModal } from '../components/ChatSidebar';
 import { getCurrentUser, updateProfile } from '../services/api';
 import {
   getToken,
@@ -9,7 +9,7 @@ import {
   setUser,
   clearAll,
   getTheme,
-  setTheme,
+  setTheme as saveTheme,
   getNotificationsPref,
   setNotificationsPref,
   clearLocalAppData,
@@ -25,6 +25,8 @@ import {
   IconChatHistory,
 } from '../components/icons/UiIcons';
 import '../styles/settings.css';
+import '../styles/pages.css';
+import '../styles/components.css';
 
 const TABS = [
   { id: 'profile', label: 'Profile & Account', Icon: IconProfile },
@@ -42,6 +44,15 @@ const formatDate = (d) => {
 const Settings = () => {
   const navigate = useNavigate();
   const isLoggedIn = !!getToken();
+  const user  = getUser();
+  const guest = getGuestProfile();
+  const displayNameShort = user?.name?.split(' ')[0] || guest?.name?.split(' ')[0] || null;
+  const initials = ((user?.name || guest?.name || 'G')
+    .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2));
+
+  // Layout state
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [connectOpen, setConnectOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(isLoggedIn);
@@ -124,8 +135,11 @@ const Settings = () => {
     } else {
       document.body.classList.remove('light-mode');
     }
-    setTheme(theme);
+    saveTheme(theme);
   }, [theme]);
+
+  const handleSessionChange = () => navigate('/chat');
+  const handleNewChat = () => navigate('/chat');
 
   const handleSaveProfile = async () => {
     if (!displayName.trim()) {
@@ -461,40 +475,146 @@ const Settings = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
-      <Navbar />
-      <div className="settings-page">
-        <div className="settings-container">
-          <nav className="settings-nav" aria-label="Settings sections">
-            <div className="settings-nav-title">Settings</div>
-            {TABS.map((item) => {
-              const TabIcon = item.Icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`settings-nav-btn ${activeTab === item.id ? 'active' : ''}`}
-                  onClick={() => setActiveTab(item.id)}
-                  title={item.label}
-                >
-                  <span className="settings-nav-icon"><TabIcon size={16} /></span>
-                  <span className="settings-nav-label">{item.label}</span>
-                </button>
-              );
-            })}
+    <div className="chat-page-v2">
+      {/* ── Collapsible Sidebar ── */}
+      <ChatSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onSessionChange={handleSessionChange}
+        onNewChat={handleNewChat}
+        isAuthenticated={isLoggedIn}
+        userName={displayNameShort}
+      />
+
+      {/* ── Main area ── */}
+      <div className="chat-main-v2">
+        {/* ════ TOP NAVIGATION BAR ════ */}
+        <header className="chat-nav-v2">
+          {/* Left: hamburger + logo */}
+          <div className="chat-nav-left">
+            <button
+              className="chat-nav-hamburger"
+              onClick={() => setSidebarOpen(v => !v)}
+              aria-label="Toggle sidebar"
+              title="Chat history"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+            <div className="chat-nav-logo">
+              <img src="/images/logo.png" alt="tom.ai" width="26" height="26" style={{ borderRadius: '7px', objectFit: 'contain' }} />
+              <span>tom.ai</span>
+            </div>
+          </div>
+
+          {/* Center: Chat / Tasks / Settings tabs */}
+          <nav className="chat-nav-center">
+            <Link to="/chat" className="chat-nav-tab" id="nav-chat-tab">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              Chat
+            </Link>
+            <Link to="/tasks" className="chat-nav-tab" id="nav-tasks-tab">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/>
+              </svg>
+              Tasks
+            </Link>
+            <Link to="/settings" className="chat-nav-tab chat-nav-tab--active" id="nav-settings-tab">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              Settings
+            </Link>
           </nav>
 
-          <div className="settings-main">
-            {message && <div className="alert alert-success">{message}</div>}
-            {error && <div className="alert alert-error">{error}</div>}
-            {loading ? (
-              <LoadingSpinner size="medium" text="Syncing settings with server…" />
-            ) : (
-              tabRenderers[activeTab]?.()
+          {/* Right: Connect + theme toggle + avatar */}
+          <div className="chat-nav-right">
+            <button
+              id="settings-connect-btn"
+              className="chat-topbar-connect-btn"
+              title="Connect integrations"
+              onClick={() => setConnectOpen(true)}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              Connect
+            </button>
+
+            <button
+              className="chat-nav-icon-btn"
+              onClick={() => setThemeState(theme === 'dark' ? 'light' : 'dark')}
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            >
+              {theme === 'dark' ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              )}
+            </button>
+
+            {/* User avatar */}
+            <div className="chat-user-avatar" title={user?.name || guest?.name || 'Guest'}>
+              {user?.picture ? (
+                <img src={user.picture} alt={user.name} width="32" height="32" style={{ borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+
+            {displayNameShort && (
+              <span className="chat-nav-username">
+                {isLoggedIn ? `Good morning, ${displayNameShort}!` : displayNameShort}
+              </span>
             )}
+          </div>
+        </header>
+
+        {/* ── Settings content ── */}
+        <div style={{ overflowY: 'auto', flex: 1, width: '100%' }}>
+          <div className="settings-page">
+            <div className="settings-container">
+              <nav className="settings-nav" aria-label="Settings sections">
+                <div className="settings-nav-title">Settings</div>
+                {TABS.map((item) => {
+                  const TabIcon = item.Icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`settings-nav-btn ${activeTab === item.id ? 'active' : ''}`}
+                      onClick={() => setActiveTab(item.id)}
+                      title={item.label}
+                    >
+                      <span className="settings-nav-icon"><TabIcon size={16} /></span>
+                      <span className="settings-nav-label">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              <div className="settings-main">
+                {message && <div className="alert alert-success">{message}</div>}
+                {error && <div className="alert alert-error">{error}</div>}
+                {loading ? (
+                  <LoadingSpinner size="medium" text="Syncing settings with server…" />
+                ) : (
+                  tabRenderers[activeTab]?.()
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {connectOpen && <ConnectModal onClose={() => setConnectOpen(false)} />}
     </div>
   );
 };

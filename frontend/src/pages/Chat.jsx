@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { sendChatMessage, getChatHistory } from '../services/api';
 import ChatMessage from '../components/ChatMessage';
-import ChatSidebar from '../components/ChatSidebar';
+import ChatSidebar, { ConnectModal } from '../components/ChatSidebar';
 import AnimatedLogo from '../components/three/AnimatedLogo';
 import { IconBolt } from '../components/icons/UiIcons';
 import { getToken, getUser, getGuestProfile, getTheme, setTheme as saveTheme } from '../utils/storage';
@@ -62,7 +62,7 @@ const Chat = () => {
   const guest       = getGuestProfile();
   const displayName = user?.name?.split(' ')[0] || guest?.name?.split(' ')[0] || null;
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [sessionId,   setSessionId]   = useState(() => getOrCreateCurrentSession().id);
   const [messages,    setMessages]    = useState([]);
   const [input,       setInput]       = useState('');
@@ -71,6 +71,7 @@ const Chat = () => {
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
   const [theme,       setTheme]       = useState(getTheme);
+  const [connectOpen, setConnectOpen] = useState(false);
 
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
@@ -352,7 +353,7 @@ const Chat = () => {
               id="chat-connect-btn"
               className="chat-topbar-connect-btn"
               title="Connect integrations"
-              onClick={() => alert('Integrations coming soon!')}
+              onClick={() => setConnectOpen(true)}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
@@ -397,7 +398,7 @@ const Chat = () => {
 
               {/* Logo + title */}
               <AnimatedLogo size="lg" className="chat-welcome-logo" />
-              <h1 className="chat-empty-title">Welcome to tom.ai</h1>
+              <h1 className="chat-empty-title">What's on your mind today?</h1>
               <p className="chat-empty-sub">Your personal AI assistant — ask me anything</p>
 
               {/* Centered glowing input */}
@@ -472,6 +473,7 @@ const Chat = () => {
         )}
 
       </div>
+      {connectOpen && <ConnectModal onClose={() => setConnectOpen(false)} />}
     </div>
   );
 };

@@ -57,7 +57,7 @@ const MCP_APPS = [
 ];
 
 /* ── Connect apps modal ── */
-const ConnectModal = ({ onClose }) => {
+export const ConnectModal = ({ onClose }) => {
   const [mcpApps, setMcpApps] = useState(MCP_APPS);
   const [connecting, setConnecting] = useState(null); // tracks which app is connecting
   const [connected,  setConnected]  = useState([]);

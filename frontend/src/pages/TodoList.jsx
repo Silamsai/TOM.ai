@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { createTask, getTasks, completeTask, deleteTask } from '../services/api';
 import { isValidTaskName } from '../utils/validators';
 import TaskCard from '../components/TaskCard';
 import LoadingSpinner from '../components/LoadingSpinner';
-import Navbar from '../components/Navbar';
+import ChatSidebar, { ConnectModal } from '../components/ChatSidebar';
+import { IconBolt } from '../components/icons/UiIcons';
+import { getToken, getUser, getGuestProfile, getTheme, setTheme as saveTheme } from '../utils/storage';
 import '../styles/pages.css';
 import '../styles/components.css';
 
@@ -217,6 +220,33 @@ const TaskForm = ({ onCreated, showToast }) => {
 
 /* ── Main TodoList page ── */
 const TodoList = () => {
+  const navigate    = useNavigate();
+  const token       = getToken();
+  const user        = getUser();
+  const guest       = getGuestProfile();
+  const displayName = user?.name?.split(' ')[0] || guest?.name?.split(' ')[0] || null;
+
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [theme,       setTheme]       = useState(getTheme);
+
+  useEffect(() => {
+    if (theme === 'light') document.body.classList.add('light-mode');
+    else document.body.classList.remove('light-mode');
+    saveTheme(theme);
+  }, [theme]);
+
+  const handleSessionChange = (id) => {
+    navigate('/chat');
+  };
+
+  const handleNewChat = (session) => {
+    navigate('/chat');
+  };
+
+  const initials = ((user?.name || guest?.name || 'G')
+    .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2));
+
   const [tasks,        setTasks]        = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy,       setSortBy]       = useState('createdAt');
@@ -273,99 +303,199 @@ const TodoList = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
-      <Navbar />
+    <div className="chat-page-v2">
+      {/* ── Collapsible Sidebar ── */}
+      <ChatSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onSessionChange={handleSessionChange}
+        onNewChat={handleNewChat}
+        isAuthenticated={!!token}
+        userName={displayName}
+      />
 
-      {/* Toast layer */}
-      <div className="toast-container">
-        {toasts.map(t => (
-          <div key={t.id} className={`toast toast-${t.type}`}>{t.msg}</div>
-        ))}
-      </div>
-
-      <div className="todo-page">
-        {/* ─── Page header ─── */}
-        <div className="todo-page-header">
-          <div>
-            <h1 className="todo-page-title">My Tasks</h1>
-            <p className="todo-page-sub">Stay on top of what matters</p>
-          </div>
-
-          {/* Stats strip */}
-          <div className="todo-stats-row">
-            {FILTERS.map(f => (
-              <StatCard
-                key={f.value}
-                icon={STAT_ICONS[f.value]}
-                label={f.label.replace(/[⏳✅]/g, '').trim()}
-                value={counts[f.value] ?? 0}
-                active={statusFilter === f.value}
-                onClick={() => setStatusFilter(f.value)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* ─── Collapsible "New Task" form ─── */}
-        <div style={{ maxWidth: 860, margin: '0 auto 28px' }}>
-          <TaskForm onCreated={fetchTasks} showToast={showToast} />
-        </div>
-
-        {/* ─── Task list ─── */}
-        <div style={{ maxWidth: 860, margin: '0 auto' }}>
-          {/* Controls row */}
-          <div className="todo-controls">
-            <div className="filter-row">
-              {FILTERS.map(f => (
-                <button
-                  key={f.value}
-                  id={`filter-${f.value}`}
-                  className={`filter-btn ${statusFilter === f.value ? 'active' : ''}`}
-                  onClick={() => setStatusFilter(f.value)}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            <select
-              id="task-sort-select"
-              className="form-input form-select"
-              style={{ width: 'auto', padding: '6px 12px', fontSize: '13px' }}
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value)}
+      {/* ── Main area ── */}
+      <div className="chat-main-v2">
+        {/* ════ TOP NAVIGATION BAR ════ */}
+        <header className="chat-nav-v2">
+          {/* Left: hamburger + logo */}
+          <div className="chat-nav-left">
+            <button
+              className="chat-nav-hamburger"
+              onClick={() => setSidebarOpen(v => !v)}
+              aria-label="Toggle sidebar"
+              title="Chat history"
             >
-              {SORT_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>Sort: {o.label}</option>
-              ))}
-            </select>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+            <div className="chat-nav-logo">
+              <img src="/images/logo.png" alt="tom.ai" width="26" height="26" style={{ borderRadius: '7px', objectFit: 'contain' }} />
+              <span>tom.ai</span>
+            </div>
           </div>
 
-          {/* List */}
-          {listLoading ? (
-            <LoadingSpinner size="medium" text="Loading tasks..." />
-          ) : tasks.length === 0 ? (
-            <div className="tasks-empty fade-in">
-              <div className="empty-icon">📝</div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: 8 }}>
-                {statusFilter === 'all'
-                  ? 'No tasks yet. Hit "New Task" to get started!'
-                  : `No ${statusFilter} tasks.`}
-              </p>
+          {/* Center: Chat / Tasks / Settings tabs */}
+          <nav className="chat-nav-center">
+            <Link to="/chat" className="chat-nav-tab" id="nav-chat-tab">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              Chat
+            </Link>
+            <Link to="/tasks" className="chat-nav-tab chat-nav-tab--active" id="nav-tasks-tab">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/>
+              </svg>
+              Tasks
+            </Link>
+            <Link to="/settings" className="chat-nav-tab" id="nav-settings-tab">
+              <IconBolt size={13} />
+              Settings
+            </Link>
+          </nav>
+
+          {/* Right: Connect + theme + avatar */}
+          <div className="chat-nav-right">
+            <button
+              id="chat-connect-btn"
+              className="chat-topbar-connect-btn"
+              title="Connect integrations"
+              onClick={() => setConnectOpen(true)}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              Connect
+            </button>
+
+            <button
+              className="chat-nav-icon-btn"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            >
+              {theme === 'dark' ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              )}
+            </button>
+
+            {/* User avatar */}
+            <div className="chat-user-avatar" title={user?.name || guest?.name || 'Guest'}>
+              {user?.picture ? (
+                <img src={user.picture} alt={user.name} width="32" height="32" style={{ borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <span>{initials}</span>
+              )}
             </div>
-          ) : (
-            <div className="tasks-grid">
-              {tasks.map(task => (
-                <TaskCard
-                  key={task._id}
-                  task={task}
-                  onComplete={handleComplete}
-                  onDelete={handleDelete}
-                />
-              ))}
+
+            {displayName && (
+              <span className="chat-nav-username">
+                {token ? `Good morning, ${displayName}!` : displayName}
+              </span>
+            )}
+          </div>
+        </header>
+
+        {/* Toast layer */}
+        <div className="toast-container">
+          {toasts.map(t => (
+            <div key={t.id} className={`toast toast-${t.type}`}>{t.msg}</div>
+          ))}
+        </div>
+
+        <div className="todo-page-container" style={{ overflowY: 'auto', flex: 1, width: '100%' }}>
+          <div className="todo-page">
+            {/* ─── Page header ─── */}
+            <div className="todo-page-header">
+              <div>
+                <h1 className="todo-page-title">My Tasks</h1>
+                <p className="todo-page-sub">Stay on top of what matters</p>
+              </div>
+
+              {/* Stats strip */}
+              <div className="todo-stats-row">
+                {FILTERS.map(f => (
+                  <StatCard
+                    key={f.value}
+                    icon={STAT_ICONS[f.value]}
+                    label={f.label.replace(/[⏳✅]/g, '').trim()}
+                    value={counts[f.value] ?? 0}
+                    active={statusFilter === f.value}
+                    onClick={() => setStatusFilter(f.value)}
+                  />
+                ))}
+              </div>
             </div>
-          )}
+
+            {/* ─── Collapsible "New Task" form ─── */}
+            <div style={{ maxWidth: 860, margin: '0 auto 28px' }}>
+              <TaskForm onCreated={fetchTasks} showToast={showToast} />
+            </div>
+
+            {/* ─── Task list ─── */}
+            <div style={{ maxWidth: 860, margin: '0 auto' }}>
+              {/* Controls row */}
+              <div className="todo-controls">
+                <div className="filter-row">
+                  {FILTERS.map(f => (
+                    <button
+                      key={f.value}
+                      id={`filter-${f.value}`}
+                      className={`filter-btn ${statusFilter === f.value ? 'active' : ''}`}
+                      onClick={() => setStatusFilter(f.value)}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+                <select
+                  id="task-sort-select"
+                  className="form-input form-select"
+                  style={{ width: 'auto', padding: '6px 12px', fontSize: '13px' }}
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value)}
+                >
+                  {SORT_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>Sort: {o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* List */}
+              {listLoading ? (
+                <LoadingSpinner size="medium" text="Loading tasks..." />
+              ) : tasks.length === 0 ? (
+                <div className="tasks-empty fade-in">
+                  <div className="empty-icon">📝</div>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: 8 }}>
+                    {statusFilter === 'all'
+                      ? 'No tasks yet. Hit "New Task" to get started!'
+                      : `No ${statusFilter} tasks.`}
+                  </p>
+                </div>
+              ) : (
+                <div className="tasks-grid">
+                  {tasks.map(task => (
+                    <TaskCard
+                      key={task._id}
+                      task={task}
+                      onComplete={handleComplete}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
+      {connectOpen && <ConnectModal onClose={() => setConnectOpen(false)} />}
     </div>
   );
 };
