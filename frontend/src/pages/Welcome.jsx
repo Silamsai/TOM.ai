@@ -69,23 +69,11 @@ const Welcome = () => {
   return (
     <div className="welcome-page welcome-page--card">
 
-      {/* Full-screen background video */}
-      <div className="welcome-video-bg" aria-hidden="true">
-        <video
-          src="/videos/tomeyes.mp4"
-          autoPlay
-          loop
-          muted
-          playsInline
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-          }}
-        />
-        <div className="welcome-video-overlay" />
-        {/* Light beam like reference */}
-        <div className="welcome-beam" aria-hidden="true" />
+      {/* Animated black background with subtle orbs */}
+      <div className="welcome-bg-orbs" aria-hidden="true">
+        <div className="wbo wbo-1" />
+        <div className="wbo wbo-2" />
+        <div className="wbo wbo-3" />
       </div>
 
       {/* Centered glass card */}
