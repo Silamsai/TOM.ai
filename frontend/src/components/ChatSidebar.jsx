@@ -2,21 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getAllSessions, createSession, deleteSession, setCurrentId, getCurrentId, renameSession } from '../utils/chatSessions';
 import { getGoogleAuthUrl, getPublicMcps, deleteChatConversation } from '../services/api';
+import { getUser, getGuestProfile } from '../utils/storage';
 import {
-  IconPlus, IconChat, IconTrash, IconClose, IconPencil,
-  IconConnect, IconBolt, IconPlug, IconLock, IconCheck, IconLoader,
+  IconTrash, IconClose, IconPencil,
+  IconConnect, IconPlug, IconLock, IconCheck, IconLoader,
 } from './icons/UiIcons';
 import '../styles/sidebar.css';
 
-const timeAgo = (ts) => {
-  const diff = Date.now() - ts;
-  const m = Math.floor(diff/60000), h = Math.floor(diff/3600000), d = Math.floor(diff/86400000);
-  if (m<1) return 'just now'; if (m<60) return `${m}m ago`;
-  if (h<24) return `${h}h ago`; if (d<7)  return `${d}d ago`;
-  return new Date(ts).toLocaleDateString('en-IN',{month:'short',day:'numeric'});
-};
-
-/* ── Hardcoded MCP Applications List (Editable in Code Only) ── */
+/* ── Hardcoded MCP Applications List ── */
 const MCP_APPS = [
   {
     id: 'calendar',
@@ -59,7 +52,7 @@ const MCP_APPS = [
 /* ── Connect apps modal ── */
 export const ConnectModal = ({ onClose }) => {
   const [mcpApps, setMcpApps] = useState(MCP_APPS);
-  const [connecting, setConnecting] = useState(null); // tracks which app is connecting
+  const [connecting, setConnecting] = useState(null);
   const [connected,  setConnected]  = useState([]);
   const [gmailConnected, setGmailConnected] = useState(
     () => localStorage.getItem('tom_gmail_connected') === 'true'
@@ -69,9 +62,7 @@ export const ConnectModal = ({ onClose }) => {
     getPublicMcps()
       .then(res => {
         const d = res.data;
-        if (d.success && d.data && d.data.length > 0) {
-          setMcpApps(d.data);
-        }
+        if (d.success && d.data && d.data.length > 0) setMcpApps(d.data);
       })
       .catch(() => {});
   }, []);
@@ -173,18 +164,30 @@ export const ConnectModal = ({ onClose }) => {
   );
 };
 
-/* ── Main Sidebar ── */
+/* ── Main Sidebar (ChatGPT-style) ── */
 const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthenticated, userName }) => {
   const location = useLocation();
   const [, forceUpdate] = useState(0);
   const [connectOpen, setConnectOpen] = useState(false);
-  const isSettingsActive = location.pathname === '/settings';
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [editTitleText, setEditTitleText] = useState('');
+  const [showMore, setShowMore] = useState(false);
+
+  const user  = getUser();
+  const guest = getGuestProfile();
+
+  const initials = ((user?.name || guest?.name || 'G')
+    .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2));
 
   const refresh = () => forceUpdate(n => n + 1);
   const sessions  = getAllSessions();
   const currentId = getCurrentId();
+
+  const filteredSessions = searchQuery.trim()
+    ? sessions.filter(s => s.title?.toLowerCase().includes(searchQuery.toLowerCase()))
+    : sessions;
 
   const handleNew = () => {
     const s = createSession(); refresh(); onNewChat(s);
@@ -200,10 +203,7 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
     e.stopPropagation();
     deleteSession(id);
     refresh();
-    // If authenticated, also remove from server
-    if (isAuthenticated) {
-      deleteChatConversation(id).catch(() => {});
-    }
+    if (isAuthenticated) deleteChatConversation(id).catch(() => {});
     if (id === currentId) {
       const rest = getAllSessions();
       if (rest.length > 0) { setCurrentId(rest[0].id); onSessionChange(rest[0].id); }
@@ -218,19 +218,13 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
   };
 
   const handleRenameSubmit = (id) => {
-    if (editTitleText.trim()) {
-      renameSession(id, editTitleText.trim());
-      refresh();
-    }
+    if (editTitleText.trim()) { renameSession(id, editTitleText.trim()); refresh(); }
     setEditingSessionId(null);
   };
 
   const handleRenameKeyDown = (e, id) => {
-    if (e.key === 'Enter') {
-      handleRenameSubmit(id);
-    } else if (e.key === 'Escape') {
-      setEditingSessionId(null);
-    }
+    if (e.key === 'Enter') handleRenameSubmit(id);
+    else if (e.key === 'Escape') setEditingSessionId(null);
   };
 
   return (
@@ -239,33 +233,141 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
         <div className="sidebar-backdrop" onClick={onClose} aria-hidden="true" />
       )}
 
-      <aside className={`chat-sidebar ${isOpen ? 'open' : ''}`} aria-label="Chat history">
-        {/* Brand */}
-        <div className="sidebar-header">
+      <aside className={`chat-sidebar ${isOpen ? 'open' : ''}`} aria-label="Chat navigation">
+
+        {/* ── TOP: brand + collapse btn ── */}
+        <div className="sidebar-top-bar">
           <div className="sidebar-brand">
             <img src="/images/logo.png" alt="tom.ai" width="22" height="22" style={{borderRadius:'6px',objectFit:'contain'}} />
-            tom.ai
+            <span>tom.ai</span>
           </div>
-          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar"><IconClose /></button>
+          <button className="sidebar-icon-btn sidebar-collapse-btn" onClick={onClose} title="Close sidebar" aria-label="Close sidebar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+          </button>
         </div>
 
-        {/* New Chat */}
+        {/* ── NEW CHAT button ── */}
         <button id="sidebar-new-chat" className="sidebar-new-btn" onClick={handleNew}>
-          <IconPlus /> New Chat
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+          New chat
         </button>
+
+        {/* ── PRIMARY NAV ITEMS ── */}
+        <nav className="sidebar-nav-list">
+          <button
+            className="sidebar-nav-item"
+            onClick={() => setShowSearch(v => !v)}
+            title="Search chats"
+          >
+            <span className="sidebar-nav-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </span>
+            <span className="sidebar-nav-label">Search chats</span>
+          </button>
+
+          {showSearch && (
+            <div className="sidebar-search-box">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                placeholder="Search your chats..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                autoFocus
+                className="sidebar-search-input"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="sidebar-search-clear">
+                  <IconClose />
+                </button>
+              )}
+            </div>
+          )}
+
+          <Link
+            to="/todos"
+            className={`sidebar-nav-item${location.pathname === '/todos' ? ' active' : ''}`}
+            onClick={() => { if (window.innerWidth < 1024) onClose(); }}
+            title="Tasks"
+          >
+            <span className="sidebar-nav-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/>
+              </svg>
+            </span>
+            <span className="sidebar-nav-label">Tasks</span>
+          </Link>
+
+          <button
+            className="sidebar-nav-item"
+            onClick={() => setConnectOpen(true)}
+            title="Connect apps"
+          >
+            <span className="sidebar-nav-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+              </svg>
+            </span>
+            <span className="sidebar-nav-label">Apps</span>
+          </button>
+
+          {showMore && (
+            <>
+              <button
+                className="sidebar-nav-item"
+                onClick={() => setConnectOpen(true)}
+                title="Connect integrations"
+              >
+                <span className="sidebar-nav-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                </span>
+                <span className="sidebar-nav-label">Connect</span>
+              </button>
+            </>
+          )}
+
+          <button
+            className="sidebar-nav-item sidebar-nav-more"
+            onClick={() => setShowMore(v => !v)}
+            title={showMore ? 'Show less' : 'More options'}
+          >
+            <span className="sidebar-nav-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>
+              </svg>
+            </span>
+            <span className="sidebar-nav-label">{showMore ? 'Less' : 'More'}</span>
+          </button>
+        </nav>
 
         <div className="sidebar-divider" />
 
-        {/* Chat list */}
-        <div className="sidebar-label">Previous Chats</div>
+        {/* ── RECENTS ── */}
+        <div className="sidebar-section-label">Recents</div>
         <div className="sidebar-sessions" role="list">
-          {sessions.length === 0 ? (
-            <p className="sidebar-empty">No chats yet.<br/>Start a conversation!</p>
-          ) : sessions.map(s => (
-            <div key={s.id} role="listitem"
-              className={`sidebar-session ${s.id===currentId?'active':''}`}
-              onClick={() => handleSelect(s.id)}>
-              <div className="ss-icon"><IconChat /></div>
+          {filteredSessions.length === 0 ? (
+            <p className="sidebar-empty">
+              {searchQuery ? 'No chats found.' : 'No chats yet.\nStart a conversation!'}
+            </p>
+          ) : filteredSessions.map(s => (
+            <div
+              key={s.id}
+              role="listitem"
+              className={`sidebar-session ${s.id === currentId ? 'active' : ''}`}
+              onClick={() => handleSelect(s.id)}
+            >
               <div className="ss-info">
                 {editingSessionId === s.id ? (
                   <input
@@ -281,7 +383,6 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
                 ) : (
                   <div className="ss-title" onDoubleClick={(e) => handleStartRename(e, s)}>{s.title}</div>
                 )}
-                <div className="ss-meta">{timeAgo(s.updatedAt)} · {s.messages.length} msg{s.messages.length!==1?'s':''}</div>
               </div>
               {editingSessionId !== s.id && (
                 <div className="ss-actions">
@@ -297,38 +398,48 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
           ))}
         </div>
 
-        {/* Footer */}
+        {/* ── FOOTER: user info + settings ── */}
         <div className="sidebar-footer">
-          <div className="sidebar-divider" style={{ marginBottom: '10px' }} />
+          <div className="sidebar-divider" style={{ margin: '0 0 10px' }} />
 
-          <div className="sidebar-footer-actions">
-            <button
-              type="button"
-              className="sidebar-footer-btn sidebar-connect-btn"
-              onClick={() => setConnectOpen(true)}
-            >
-              <span className="sidebar-footer-icon" aria-hidden="true">
-                <IconConnect size={16} />
-              </span>
-              <span className="sidebar-footer-label">Connect</span>
-            </button>
+          <Link
+            to="/settings"
+            id="sidebar-settings"
+            className={`sidebar-nav-item${location.pathname === '/settings' ? ' active' : ''}`}
+            onClick={() => { if (window.innerWidth < 1024) onClose(); }}
+            title="Settings"
+          >
+            <span className="sidebar-nav-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </span>
+            <span className="sidebar-nav-label">Settings</span>
+          </Link>
 
-            <Link
-              to="/settings"
-              id="sidebar-settings"
-              className={`sidebar-footer-btn sidebar-settings-btn${isSettingsActive ? ' active' : ''}`}
-              onClick={() => { if (window.innerWidth < 1024) onClose(); }}
-            >
-              <span className="sidebar-footer-icon" aria-hidden="true">
-                <IconBolt size={16} />
-              </span>
-              <span className="sidebar-footer-label">Settings</span>
-            </Link>
+          {/* User row at very bottom */}
+          <div className="sidebar-user-row">
+            <div className="sidebar-user-avatar">
+              {user?.picture ? (
+                <img src={user.picture} alt={user?.name} width="32" height="32" style={{ borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{user?.name || guest?.name || 'Guest'}</div>
+              <div className="sidebar-user-plan">{isAuthenticated ? 'Free' : 'Guest mode'}</div>
+            </div>
+            {!isAuthenticated && (
+              <Link to="/login" className="sidebar-upgrade-btn" title="Sign in">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>
+                Upgrade
+              </Link>
+            )}
           </div>
-
-          <span className="sf-note">
-            {isAuthenticated ? `Synced · ${userName || ''}` : 'Chats saved locally'}
-          </span>
         </div>
       </aside>
 
