@@ -52,31 +52,33 @@ const Welcome = () => {
 
   if (phase === 'intro') {
     return (
-      <div className="welcome-page">
-        <div className="welcome-particles" aria-hidden="true">
-          {[...Array(18)].map((_, i) => <span key={i} className="wparticle" style={{ '--i': i }} />)}
-        </div>
+      <div className="welcome-page" style={{ padding: 0, overflow: 'hidden', backgroundColor: '#000' }}>
         <motion.div
-          className="welcome-intro fade-in"
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="fade-in"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          style={{ 
+            width: '100vw', 
+            height: '100vh', 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            overflow: 'hidden'
+          }}
         >
-          <div className="wi-orb" aria-hidden="true" />
-          <div className="wi-video-container" style={{ position: 'relative', zIndex: 2, marginBottom: '16px' }}>
-            <video 
-              src="/videos/tomeyes.mp4" 
-              autoPlay 
-              muted 
-              playsInline
-              style={{ width: '160px', height: '160px', borderRadius: '30px', objectFit: 'cover', boxShadow: '0 0 40px rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.4)', animation: 'float 3s ease-in-out infinite' }}
-            />
-          </div>
-          <h1 className="wi-brand">tom.ai</h1>
-          <p className="wi-sub">Your personal AI assistant</p>
-          <div className="wi-dots" aria-label="Loading">
-            <span /><span /><span />
-          </div>
+          <video 
+            src="/videos/tomeyes.mp4" 
+            autoPlay 
+            muted 
+            playsInline
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover', 
+              transform: 'scale(1.15)' /* Crops edges to hide logo */
+            }}
+          />
         </motion.div>
       </div>
     );
@@ -98,16 +100,23 @@ const Welcome = () => {
               <div className="wl-brand">
                 <AnimatedLogo size="sm" /> tom.ai
               </div>
-              <video
-                id="welcome-hero-video"
-                src="/videos/tomeyes.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="wl-hero"
-                style={{ objectFit: 'cover' }}
-              />
+              <div className="wl-hero" style={{ overflow: 'hidden', borderRadius: '24px', padding: 0 }}>
+                <video
+                  id="welcome-hero-video"
+                  src="/videos/tomeyes.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'cover', 
+                    transform: 'scale(1.15)', /* Crops edges to hide logo */
+                    display: 'block' 
+                  }}
+                />
+              </div>
               <div className="wl-features">
                 {FEATURES.map((f, i) => (
                   <motion.div
