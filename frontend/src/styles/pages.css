@@ -166,6 +166,26 @@
   backdrop-filter: blur(12px);
   flex-shrink: 0;
 }
+.chat-topbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.chat-topbar-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--white);
+  border-color: var(--border-strong);
+}
+
 .chat-topbar-title {
   font-size: 14px; font-weight: 600;
   color: var(--text-secondary);

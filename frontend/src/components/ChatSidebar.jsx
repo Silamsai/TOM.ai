@@ -4,7 +4,7 @@ import { getAllSessions, createSession, deleteSession, setCurrentId, getCurrentI
 import { getGoogleAuthUrl, getPublicMcps } from '../services/api';
 import {
   IconPlus, IconChat, IconTrash, IconClose, IconPencil,
-  IconConnect, IconSliders, IconPlug, IconLock, IconCheck, IconLoader,
+  IconConnect, IconBolt, IconPlug, IconLock, IconCheck, IconLoader,
 } from './icons/UiIcons';
 import '../styles/sidebar.css';
 
@@ -314,7 +314,7 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
               onClick={() => { if (window.innerWidth < 1024) onClose(); }}
             >
               <span className="sidebar-footer-icon" aria-hidden="true">
-                <IconSliders size={16} />
+                <IconBolt size={16} />
               </span>
               <span className="sidebar-footer-label">Settings</span>
             </Link>

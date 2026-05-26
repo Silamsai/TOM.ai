@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
+import { Link } from 'react-router-dom';
 import { sendChatMessage, getChatHistory } from '../services/api';
 import ChatMessage from '../components/ChatMessage';
 import Navbar from '../components/Navbar';
 import ChatSidebar from '../components/ChatSidebar';
 import AnimatedLogo from '../components/three/AnimatedLogo';
 import { ASSETS, FEATURES } from '../config/assets';
+import { IconBolt } from '../components/icons/UiIcons';
 import { getToken, getUser, getGuestProfile, getTheme, setTheme as saveTheme } from '../utils/storage';
 import { generateGuestResponse } from '../utils/guestAI';
 import {
@@ -217,6 +219,15 @@ const Chat = () => {
             <span className="chat-topbar-title">{greeting}</span>
             
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Link
+                to="/settings"
+                className="chat-topbar-icon-btn"
+                id="chat-topbar-settings"
+                title="Settings"
+                aria-label="Settings"
+              >
+                <IconBolt size={18} />
+              </Link>
               <button
                 className="chat-theme-btn"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

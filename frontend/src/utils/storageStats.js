@@ -1,7 +1,5 @@
 import { getAllSessions } from './chatSessions';
 
-const APP_KEYS_PREFIX = 'tom_';
-
 /** Estimate bytes used by tom.ai keys in localStorage */
 export const getLocalStorageUsage = () => {
   if (typeof localStorage === 'undefined') return { bytes: 0, keys: [] };

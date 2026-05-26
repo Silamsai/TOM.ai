@@ -73,6 +73,19 @@ const Navbar = ({ onSidebarToggle }) => {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
                 Tasks
               </NavLink>
+              <NavLink to="/settings" id="nav-settings" className={({isActive})=>`nav-link ${isActive?'active':''}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Settings
+              </NavLink>
+            </div>
+          )}
+
+          {!user && (
+            <div className="navbar-links">
+              <NavLink to="/settings" id="nav-settings-guest" className={({isActive})=>`nav-link ${isActive?'active':''}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Settings
+              </NavLink>
             </div>
           )}
 

@@ -51,6 +51,12 @@ export const IconSliders = ({ size = 14 }) => (
   </svg>
 );
 
+export const IconBolt = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </svg>
+);
+
 export const IconSettings = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
     <circle cx="12" cy="12" r="3" />
