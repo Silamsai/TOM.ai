@@ -21,8 +21,11 @@ const Scene3D = lazy(() => import('../components/three/Scene3D'));
 /** Time-based greeting */
 const getTimeGreeting = (name) => {
   const h = new Date().getHours();
-  const time = h >= 5 && h < 12 ? 'Good Morning' : h >= 12 && h < 17 ? 'Good Afternoon' : h >= 17 && h < 21 ? 'Good Evening' : 'Good Night';
-  return name ? `${time}, ${name}! 👋` : `${time}! 👋`;
+  if (name) {
+    const time = h >= 5 && h < 12 ? 'Good morning' : h >= 12 && h < 17 ? 'Good afternoon' : h >= 17 && h < 21 ? 'Good evening' : 'Good night';
+    return `${time}, ${name}!`;
+  }
+  return "What's on your mind today?";
 };
 
 const Chat = () => {
@@ -221,8 +224,36 @@ const Chat = () => {
               ☰
             </button>
             <span className="chat-topbar-title">{greeting}</span>
-            
+
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Connect button */}
+              <button
+                id="chat-connect-btn"
+                className="chat-topbar-connect-btn"
+                title="Connect integrations"
+                aria-label="Connect"
+                onClick={() => alert('Integrations coming soon!')}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                Connect
+              </button>
+
+              <Link
+                to="/tasks"
+                className="chat-topbar-icon-btn"
+                id="chat-topbar-tasks"
+                title="Tasks"
+                aria-label="Tasks"
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="3"/>
+                  <path d="M9 12l2 2 4-4"/>
+                </svg>
+              </Link>
+
               <Link
                 to="/settings"
                 className="chat-topbar-icon-btn"
@@ -232,6 +263,7 @@ const Chat = () => {
               >
                 <IconBolt size={18} />
               </Link>
+
               <button
                 className="chat-theme-btn"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -243,19 +275,6 @@ const Chat = () => {
                 ) : (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                 )}
-              </button>
-
-              <button
-                className="chat-share-btn"
-                onClick={() => {
-                  if (navigator.share) navigator.share({ title: 'TOM.AI Chat', url: window.location.href });
-                  else navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!'));
-                }}
-                aria-label="Share Chat"
-                title="Share Chat"
-                style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
               </button>
             </div>
           </div>
@@ -343,38 +362,43 @@ const Chat = () => {
                 <button onClick={() => setAttachments([])} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 4px' }}>✕</button>
               </div>
             )}
-            <div className="chat-input-row" style={replyingTo || attachments.length > 0 ? { borderRadius: '0 0 12px 12px', borderTop: 'none' } : {}}>
-              <input type="file" ref={fileInputRef} hidden onChange={handleFileUpload} accept="image/*,application/pdf" />
-              <button 
-                className="chat-attach-btn" 
-                onClick={() => fileInputRef.current?.click()}
-                style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '0 8px', display: 'flex', alignItems: 'center' }}
-                title="Attach image or PDF"
-                disabled={loading}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              </button>
-              <textarea
-                id="chat-input"
-                ref={textareaRef}
-                className="chat-input"
-                placeholder="Ask tom.ai anything… (Enter to send, Shift+Enter for new line)"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                disabled={loading}
-                aria-label="Chat message input"
-              />
-              <button
-                id="chat-send-btn"
-                className="chat-send-btn"
-                onClick={() => sendMessage(input)}
-                disabled={loading || !input.trim()}
-                aria-label="Send message"
-              >
-                {loading ? '⏳' : '➤'}
-              </button>
+            <div className="chat-input-glow-wrap">
+              <div className="chat-input-row" style={replyingTo || attachments.length > 0 ? { borderRadius: '0 0 16px 16px', borderTop: 'none' } : {}}>
+                <input type="file" ref={fileInputRef} hidden onChange={handleFileUpload} accept="image/*,application/pdf" />
+                <button
+                  className="chat-attach-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Attach image or PDF"
+                  disabled={loading}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                </button>
+                <textarea
+                  id="chat-input"
+                  ref={textareaRef}
+                  className="chat-input"
+                  placeholder="Ask anything..."
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                  disabled={loading}
+                  aria-label="Chat message input"
+                />
+                <button
+                  id="chat-send-btn"
+                  className="chat-send-btn chat-send-btn--purple"
+                  onClick={() => sendMessage(input)}
+                  disabled={loading || !input.trim()}
+                  aria-label="Send message"
+                >
+                  {loading ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/></path></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                  )}
+                </button>
+              </div>
             </div>
             <p className="chat-input-hint">
               {token
