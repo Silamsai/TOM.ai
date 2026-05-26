@@ -61,6 +61,15 @@ const userSchema = new mongoose.Schema(
       calendar: { type: Boolean, default: false },
       tasks: { type: Boolean, default: false },
     },
+    aiPersona: {
+      type: String,
+      enum: ['professional', 'creative', 'sarcastic', 'empathetic'],
+      default: 'professional',
+    },
+    dailyBriefTime: {
+      type: String,
+      default: 'disabled',
+    },
     accountStatus: {
       type: String,
       enum: ['active', 'inactive'],

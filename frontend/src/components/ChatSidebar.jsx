@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getAllSessions, createSession, deleteSession, setCurrentId, getCurrentId, renameSession } from '../utils/chatSessions';
-import { getGoogleAuthUrl, getPublicMcps } from '../services/api';
+import { getGoogleAuthUrl, getPublicMcps, deleteChatConversation } from '../services/api';
 import {
   IconPlus, IconChat, IconTrash, IconClose, IconPencil,
   IconConnect, IconBolt, IconPlug, IconLock, IconCheck, IconLoader,
@@ -197,7 +197,13 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
   };
 
   const handleDelete = (e, id) => {
-    e.stopPropagation(); deleteSession(id); refresh();
+    e.stopPropagation();
+    deleteSession(id);
+    refresh();
+    // If authenticated, also remove from server
+    if (isAuthenticated) {
+      deleteChatConversation(id).catch(() => {});
+    }
     if (id === currentId) {
       const rest = getAllSessions();
       if (rest.length > 0) { setCurrentId(rest[0].id); onSessionChange(rest[0].id); }

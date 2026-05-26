@@ -14,14 +14,14 @@ router.use(authMiddleware);
 // ============================================================
 router.post('/message', async (req, res, next) => {
   try {
-    const { message, attachments } = req.body;
+    const { message, attachments, conversationId } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ success: false, message: ERRORS.MESSAGE_REQUIRED });
     }
 
     // Fetch user info for personalised Claude prompt
-    const user = await User.findById(req.userId).select('name email');
+    const user = await User.findById(req.userId).select('name email aiPersona');
     if (!user) return res.status(404).json({ success: false, message: ERRORS.NOT_FOUND });
 
     // Send message to Gemini AI
@@ -37,6 +37,7 @@ router.post('/message', async (req, res, next) => {
       userMessage: message.trim(),
       claudeResponse: response,
       tokens: { input: usage.input, output: usage.output },
+      conversationId: conversationId || null,
     });
 
     // Index chat in RAG Vector Store
@@ -56,6 +57,7 @@ router.post('/message', async (req, res, next) => {
         botResponse: chat.claudeResponse,
         timestamp: chat.timestamp,
         tokens: chat.tokens,
+        conversationId: chat.conversationId,
       },
     });
   } catch (error) {
@@ -82,7 +84,13 @@ router.post('/message', async (req, res, next) => {
 // ============================================================
 router.get('/history', async (req, res, next) => {
   try {
-    const history = await ChatHistory.find({ userId: req.userId })
+    const { conversationId } = req.query;
+    const filter = { userId: req.userId };
+    if (conversationId) {
+      filter.conversationId = conversationId;
+    }
+
+    const history = await ChatHistory.find(filter)
       .sort({ timestamp: -1 })
       .limit(MAX_CHAT_HISTORY)
       .lean();
@@ -92,6 +100,23 @@ router.get('/history', async (req, res, next) => {
       success: true,
       message: 'Chat history retrieved.',
       data: history.reverse(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================
+// DELETE /api/chat/conversation/:conversationId
+// ============================================================
+router.delete('/conversation/:conversationId', async (req, res, next) => {
+  try {
+    const { conversationId } = req.params;
+    const result = await ChatHistory.deleteMany({ userId: req.userId, conversationId });
+    res.status(200).json({
+      success: true,
+      message: 'Conversation deleted.',
+      data: { deletedCount: result.deletedCount },
     });
   } catch (error) {
     next(error);

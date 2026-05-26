@@ -89,7 +89,7 @@ const Chat = () => {
     if (token) {
       const fetchHistory = async () => {
         try {
-          const res = await getChatHistory();
+          const res = await getChatHistory(sessionId);
           const history = res.data.data || [];
           const mapped = history.flatMap(item => [
             { type: 'user', message: item.userMessage,    timestamp: item.timestamp, id: `u-${item.messageId}` },
@@ -134,7 +134,11 @@ const Chat = () => {
 
       if (token) {
         // ── Normal Gemini AI response (MCP handles emails now) ──
-        const res = await sendChatMessage(trimmed || `Please review the attached file: ${sentAttachments[0]?.fileName}`, sentAttachments);
+        const res = await sendChatMessage(
+          trimmed || `Please review the attached file: ${sentAttachments[0]?.fileName}`,
+          sentAttachments,
+          sessionId
+        );
         const { botResponse, timestamp } = res.data.data;
         botText = botResponse;
 
@@ -292,6 +296,7 @@ const Chat = () => {
                     message={msg.message}
                     timestamp={msg.timestamp}
                     userPicture={user?.picture}
+                    userName={user?.name || guest?.name || 'Guest'}
                     onReply={setReplyingTo}
                   />
                 ))}

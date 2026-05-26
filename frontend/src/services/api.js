@@ -68,11 +68,14 @@ export const exchangeGoogleCode = (code) =>
 // ============================================================
 // CHAT
 // ============================================================
-export const sendChatMessage = (message, attachments = []) =>
-  api.post('/chat/message', { message, attachments });
+export const sendChatMessage = (message, attachments = [], conversationId = null) =>
+  api.post('/chat/message', { message, attachments, conversationId });
 
-export const getChatHistory = () =>
-  api.get('/chat/history');
+export const getChatHistory = (conversationId = null) =>
+  api.get('/chat/history', { params: { conversationId } });
+
+export const deleteChatConversation = (conversationId) =>
+  api.delete(`/chat/conversation/${conversationId}`);
 
 // ============================================================
 // TASKS

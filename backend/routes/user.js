@@ -22,7 +22,7 @@ router.get('/me', async (req, res, next) => {
 // PATCH /api/user/profile
 router.patch('/profile', async (req, res, next) => {
   try {
-    const { name } = req.body;
+    const { name, aiPersona, dailyBriefTime } = req.body;
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
 
@@ -31,6 +31,17 @@ router.patch('/profile', async (req, res, next) => {
         return res.status(400).json({ success: false, message: 'Name cannot be empty.' });
       }
       user.name = String(name).trim();
+    }
+
+    if (aiPersona !== undefined) {
+      if (!['professional', 'creative', 'sarcastic', 'empathetic'].includes(aiPersona)) {
+        return res.status(400).json({ success: false, message: 'Invalid AI Persona choice.' });
+      }
+      user.aiPersona = aiPersona;
+    }
+
+    if (dailyBriefTime !== undefined) {
+      user.dailyBriefTime = String(dailyBriefTime).trim();
     }
 
     await user.save({ validateBeforeSave: false });

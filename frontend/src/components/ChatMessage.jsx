@@ -58,9 +58,13 @@ const renderMarkdown = (text) => {
   return result;
 };
 
-const ChatMessage = ({ message, type, timestamp, userPicture, onReply }) => {
+const ChatMessage = ({ message, type, timestamp, userPicture, userName, onReply }) => {
   const [isHovered, React_setIsHovered] = React.useState(false);
   const isUser = type === 'user';
+  const initials = userName
+    ? userName.trim().split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+    : 'G';
+
   return (
     <div 
       className={`message-row ${isUser ? 'user' : 'bot'}`}
@@ -72,9 +76,9 @@ const ChatMessage = ({ message, type, timestamp, userPicture, onReply }) => {
         {isUser ? (
           userPicture
             ? <img src={userPicture} alt="You" className="msg-avatar-img" referrerPolicy="no-referrer" />
-            : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="16" height="16"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            : <span className="msg-avatar-initials">{initials}</span>
         ) : (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="16" height="16"><rect x="3" y="8" width="18" height="12" rx="3"/><circle cx="9" cy="14" r="1.5" fill="currentColor"/><circle cx="15" cy="14" r="1.5" fill="currentColor"/><path d="M9 8V5a3 3 0 016 0v3"/><path d="M12 3v2"/></svg>
+          <img src="/images/logo.png" alt="tom.ai" className="msg-avatar-img msg-avatar-bot" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: '4px' }} />
         )}
       </div>
       <div className="message-content-wrap">

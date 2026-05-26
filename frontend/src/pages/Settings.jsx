@@ -22,11 +22,13 @@ import {
   IconStorage,
   IconAppearance,
   IconBell,
+  IconChatHistory,
 } from '../components/icons/UiIcons';
 import '../styles/settings.css';
 
 const TABS = [
   { id: 'profile', label: 'Profile & Account', Icon: IconProfile },
+  { id: 'ai_personality', label: 'AI & Persona Settings', Icon: IconChatHistory },
   { id: 'appearance', label: 'Appearance', Icon: IconAppearance },
   { id: 'storage', label: 'Storage & Cache', Icon: IconStorage },
   { id: 'notifications', label: 'Notifications', Icon: IconBell },
@@ -53,6 +55,8 @@ const Settings = () => {
   const [theme, setThemeState] = useState(() => getTheme());
   const [notifications, setNotifications] = useState(() => getNotificationsPref());
   const [localChatsCount, setLocalChatsCount] = useState(0);
+  const [aiPersona, setAiPersona] = useState('professional');
+  const [dailyBriefTime, setDailyBriefTime] = useState('disabled');
 
   const showMsg = (msg, isError = false) => {
     if (isError) {
@@ -73,6 +77,8 @@ const Settings = () => {
     if (!isLoggedIn) {
       const gp = getGuestProfile();
       setDisplayName(gp?.name || 'Guest User');
+      setAiPersona(localStorage.getItem('tom_ai_persona') || 'professional');
+      setDailyBriefTime(localStorage.getItem('tom_ai_daily_brief') || 'disabled');
       setLoading(false);
       return;
     }
@@ -83,11 +89,15 @@ const Settings = () => {
       const res = await getCurrentUser();
       const u = res.data.data;
       setDisplayName(u.name || '');
+      setAiPersona(u.aiPersona || 'professional');
+      setDailyBriefTime(u.dailyBriefTime || 'disabled');
       setAccountInfo(u);
       setUser(u); // Sync local storage with fresh DB model
     } catch (err) {
       // Fallback to cache if offline/failed
       setDisplayName(cachedUser?.name || '');
+      setAiPersona(cachedUser?.aiPersona || 'professional');
+      setDailyBriefTime(cachedUser?.dailyBriefTime || 'disabled');
       setAccountInfo(cachedUser);
       showMsg('Could not sync with server. Showing offline settings.', true);
     } finally {
@@ -144,6 +154,33 @@ const Settings = () => {
         showMsg('Local profile updated.');
       } catch {
         showMsg('Failed to update local profile.', true);
+      } finally {
+        setSaving(false);
+      }
+    }
+  };
+
+  const handleSaveAiSettings = async () => {
+    setSaving(true);
+    if (isLoggedIn) {
+      try {
+        const res = await updateProfile({ aiPersona, dailyBriefTime });
+        const updatedUser = res.data.data;
+        setUser(updatedUser);
+        setAccountInfo(updatedUser);
+        showMsg('AI settings saved successfully.');
+      } catch (err) {
+        showMsg(err.response?.data?.message || 'Failed to save AI settings.', true);
+      } finally {
+        setSaving(false);
+      }
+    } else {
+      try {
+        localStorage.setItem('tom_ai_persona', aiPersona);
+        localStorage.setItem('tom_ai_daily_brief', dailyBriefTime);
+        showMsg('Local AI settings updated.');
+      } catch {
+        showMsg('Failed to save local AI settings.', true);
       } finally {
         setSaving(false);
       }
@@ -262,6 +299,70 @@ const Settings = () => {
     </section>
   );
 
+  const renderAiPersonality = () => (
+    <section className="settings-section" id="settings-ai-personality">
+      <div className="settings-section-header">
+        <h2>AI & Persona Settings</h2>
+        <p>Tailor TOM.AI's personality, tone, and proactive briefing digests.</p>
+      </div>
+
+      <div style={{ marginBottom: '28px' }}>
+        <h3 style={{ marginBottom: '14px', fontSize: '15px', color: 'var(--white)' }}>Assistant Persona & Tone</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+          {[
+            { id: 'professional', label: '💼 Professional & Direct', desc: 'Competent, concise, direct, and structured responses. Ideal for productivity.' },
+            { id: 'creative', label: '🎨 Warm & Creative', desc: 'Expressive, encouraging, highly descriptive vocabulary and analogies.' },
+            { id: 'sarcastic', label: '🌶️ Sarcastic Buddy', desc: 'Playful, dry, witty banter while keeping solutions 100% accurate.' },
+            { id: 'empathetic', label: '❤️ Empathetic Coach', desc: 'Compassionate, gentle, patient, validating and deeply supportive.' }
+          ].map(p => (
+            <div
+              key={p.id}
+              onClick={() => setAiPersona(p.id)}
+              style={{
+                padding: '16px',
+                borderRadius: '12px',
+                border: aiPersona === p.id ? '2px solid #4f46e5' : '1px solid rgba(255,255,255,0.08)',
+                background: aiPersona === p.id ? 'rgba(79,70,229,0.08)' : 'rgba(255,255,255,0.02)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
+              }}
+              className="persona-card-option"
+            >
+              <strong style={{ color: aiPersona === p.id ? '#fff' : '#c7d2fe', fontSize: '13.5px' }}>{p.label}</strong>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)', lineHeight: '1.45' }}>{p.desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="settings-row" style={{ alignItems: 'flex-start', flexDirection: 'column', gap: '10px', padding: '20px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="settings-row-label">
+          <strong>Daily Task Summary Digest</strong>
+          <span style={{ marginTop: '4px' }}>Opt-in to receive a structured email containing all your pending & overdue tasks every day</span>
+        </div>
+        <select
+          className="form-input form-select"
+          style={{ width: '100%', maxWidth: '240px', padding: '8px 12px', marginTop: '6px' }}
+          value={dailyBriefTime}
+          onChange={(e) => setDailyBriefTime(e.target.value)}
+        >
+          <option value="disabled">Disabled</option>
+          <option value="08:00">08:00 AM (Recommended)</option>
+          <option value="09:00">09:00 AM</option>
+          <option value="10:00">10:00 AM</option>
+          <option value="18:00">06:00 PM</option>
+        </select>
+      </div>
+
+      <button className="btn btn-primary" onClick={handleSaveAiSettings} disabled={saving} style={{ marginTop: '16px' }}>
+        {saving ? <LoadingSpinner size="small" /> : 'Save AI Settings'}
+      </button>
+    </section>
+  );
+
   const renderAppearance = () => (
     <section className="settings-section" id="settings-appearance">
       <div className="settings-section-header">
@@ -353,6 +454,7 @@ const Settings = () => {
 
   const tabRenderers = {
     profile: renderProfile,
+    ai_personality: renderAiPersonality,
     appearance: renderAppearance,
     storage: renderStorage,
     notifications: renderNotifications,
