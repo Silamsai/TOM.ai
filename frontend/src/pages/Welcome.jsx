@@ -27,7 +27,7 @@ const Welcome = () => {
       navigate('/chat', { replace: true });
       return;
     }
-    const t = setTimeout(() => setPhase('landing'), 4000);
+    const t = setTimeout(() => setPhase('landing'), 2400);
     return () => clearTimeout(t);
   }, [navigate]);
 
@@ -52,33 +52,25 @@ const Welcome = () => {
 
   if (phase === 'intro') {
     return (
-      <div className="welcome-page" style={{ padding: 0, overflow: 'hidden', backgroundColor: '#000' }}>
+      <div className="welcome-page">
+        <div className="welcome-particles" aria-hidden="true">
+          {[...Array(18)].map((_, i) => <span key={i} className="wparticle" style={{ '--i': i }} />)}
+        </div>
         <motion.div
-          className="fade-in"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6 }}
-          style={{ 
-            width: '100vw', 
-            height: '100vh', 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center',
-            overflow: 'hidden'
-          }}
+          className="welcome-intro fade-in"
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
-          <video 
-            src="/videos/tomeyes.mp4" 
-            autoPlay 
-            muted 
-            playsInline
-            style={{ 
-              width: '100%', 
-              height: '100%', 
-              objectFit: 'cover', 
-              transform: 'scale(1.15)' /* Crops edges to hide logo */
-            }}
-          />
+          <div className="wi-orb" aria-hidden="true" />
+          <div className="wi-robot">
+            <AnimatedLogo size="lg" />
+          </div>
+          <h1 className="wi-brand">tom.ai</h1>
+          <p className="wi-sub">Your personal AI assistant</p>
+          <div className="wi-dots" aria-label="Loading">
+            <span /><span /><span />
+          </div>
         </motion.div>
       </div>
     );
@@ -112,7 +104,7 @@ const Welcome = () => {
                     width: '100%', 
                     height: '100%', 
                     objectFit: 'cover', 
-                    transform: 'scale(1.15)', /* Crops edges to hide logo */
+                    transform: 'scale(1.35) translate(-4%, -4%)', /* Aggressive crop to hide bottom-right logo */
                     display: 'block' 
                   }}
                 />
