@@ -28,7 +28,7 @@ const Welcome = () => {
       navigate('/chat', { replace: true });
       return;
     }
-    const t = setTimeout(() => setPhase('landing'), 2400);
+    const t = setTimeout(() => setPhase('landing'), 4000);
     return () => clearTimeout(t);
   }, [navigate]);
 
@@ -64,8 +64,14 @@ const Welcome = () => {
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="wi-orb" aria-hidden="true" />
-          <div className="wi-robot">
-            <AnimatedLogo size="lg" />
+          <div className="wi-video-container" style={{ position: 'relative', zIndex: 2, marginBottom: '16px' }}>
+            <video 
+              src="/videos/tomeyes.mp4" 
+              autoPlay 
+              muted 
+              playsInline
+              style={{ width: '160px', height: '160px', borderRadius: '30px', objectFit: 'cover', boxShadow: '0 0 40px rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.4)', animation: 'float 3s ease-in-out infinite' }}
+            />
           </div>
           <h1 className="wi-brand">tom.ai</h1>
           <p className="wi-sub">Your personal AI assistant</p>
@@ -93,12 +99,15 @@ const Welcome = () => {
               <div className="wl-brand">
                 <AnimatedLogo size="sm" /> tom.ai
               </div>
-              <img
-                id="welcome-hero-img"
-                src={ASSETS.images.hero2d}
-                alt=""
-                className="wl-hero wl-hero--overlay"
-                onError={(e) => { e.target.style.display = 'none'; }}
+              <video
+                id="welcome-hero-video"
+                src="/videos/tomeyes.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="wl-hero"
+                style={{ objectFit: 'cover' }}
               />
               <div className="wl-features">
                 {FEATURES.map((f, i) => (
