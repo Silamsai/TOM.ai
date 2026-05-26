@@ -8,11 +8,40 @@ import MixupLayout from '../components/layout/MixupLayout';
 import WorkflowStrip from '../components/workflow/WorkflowStrip';
 import '../styles/welcome.css';
 
+const FeatureIcons = {
+  brain: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.5 2a2.5 2.5 0 0 1 5 0c1.1 0 2 .9 2 2 1.1 0 2 .9 2 2 0 .7-.4 1.4-1 1.7V9c0 3.3-2.7 6-6 6S5.5 12.3 5.5 9V7.7C4.9 7.4 4.5 6.7 4.5 6c0-1.1.9-2 2-2 0-1.1.9-2 2-2z"/>
+      <path d="M9.5 15v1a3 3 0 0 0 6 0v-1"/>
+      <path d="M6 9H5a2 2 0 0 0 0 4h1"/>
+      <path d="M18 9h1a2 2 0 0 1 0 4h-1"/>
+    </svg>
+  ),
+  tasks: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="3"/>
+      <path d="M9 12l2 2 4-4"/>
+    </svg>
+  ),
+  writing: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9"/>
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+    </svg>
+  ),
+  lock: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  ),
+};
+
 const FEATURES = [
-  { icon: '🧠', title: 'Intelligent Answers', desc: 'Ask anything — science, history, tech, math, coding.' },
-  { icon: '📋', title: 'Task Manager', desc: 'Create tasks, set deadlines, and stay organized.' },
-  { icon: '✍️', title: 'AI Writing', desc: 'Draft emails, essays, summaries, and more instantly.' },
-  { icon: '🔒', title: 'Private & Secure', desc: 'Your data is encrypted and never shared.' },
+  { icon: FeatureIcons.brain,   title: 'Intelligent Answers', desc: 'Ask anything — science, history, tech, math, coding.' },
+  { icon: FeatureIcons.tasks,   title: 'Task Manager',        desc: 'Create tasks, set deadlines, and stay organized.' },
+  { icon: FeatureIcons.writing, title: 'AI Writing',          desc: 'Draft emails, essays, summaries, and more instantly.' },
+  { icon: FeatureIcons.lock,    title: 'Private & Secure',    desc: 'Your data is encrypted and never shared.' },
 ];
 
 const Welcome = () => {
@@ -171,8 +200,13 @@ const Welcome = () => {
             to="/signup"
             className="btn btn-primary btn-full btn-lg welcome-cta"
             onClick={() => setWorkflowStep(0)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
           >
-            📧 Create Account with Email
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="2"/>
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+            Create Account with Email
           </Link>
 
           <Link
