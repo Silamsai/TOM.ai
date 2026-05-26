@@ -6,7 +6,6 @@ import { redirectToGoogle } from '../utils/googleAuth';
 import AnimatedLogo from '../components/three/AnimatedLogo';
 import MixupLayout from '../components/layout/MixupLayout';
 import WorkflowStrip from '../components/workflow/WorkflowStrip';
-import { ASSETS } from '../config/assets';
 import '../styles/welcome.css';
 
 const FEATURES = [
