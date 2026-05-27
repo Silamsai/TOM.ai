@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { createTask, getTasks, completeTask, deleteTask } from '../services/api';
 import { isValidTaskName } from '../utils/validators';
 import TaskCard from '../components/TaskCard';
@@ -220,7 +220,6 @@ const TaskForm = ({ onCreated, showToast }) => {
 
 /* ── Main TodoList page ── */
 const TodoList = () => {
-  const navigate    = useNavigate();
   const token       = getToken();
   const user        = getUser();
   const guest       = getGuestProfile();
