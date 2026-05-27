@@ -4,7 +4,7 @@ import { createTask, getTasks, completeTask, deleteTask } from '../services/api'
 import { isValidTaskName } from '../utils/validators';
 import TaskCard from '../components/TaskCard';
 import LoadingSpinner from '../components/LoadingSpinner';
-import ChatSidebar, { ConnectModal } from '../components/ChatSidebar';
+import { ConnectModal } from '../components/ChatSidebar';
 import { IconBolt } from '../components/icons/UiIcons';
 import { getToken, getUser, getGuestProfile, getTheme, setTheme as saveTheme } from '../utils/storage';
 import '../styles/pages.css';
@@ -226,7 +226,6 @@ const TodoList = () => {
   const guest       = getGuestProfile();
   const displayName = user?.name?.split(' ')[0] || guest?.name?.split(' ')[0] || null;
 
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [connectOpen, setConnectOpen] = useState(false);
   const [theme,       setTheme]       = useState(getTheme);
 
@@ -235,14 +234,6 @@ const TodoList = () => {
     else document.body.classList.remove('light-mode');
     saveTheme(theme);
   }, [theme]);
-
-  const handleSessionChange = (id) => {
-    navigate('/chat');
-  };
-
-  const handleNewChat = (session) => {
-    navigate('/chat');
-  };
 
   const initials = ((user?.name || guest?.name || 'G')
     .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2));
@@ -304,35 +295,14 @@ const TodoList = () => {
 
   return (
     <div className="chat-page-v2">
-      {/* ── Collapsible Sidebar ── */}
-      <ChatSidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onSessionChange={handleSessionChange}
-        onNewChat={handleNewChat}
-        isAuthenticated={!!token}
-        userName={displayName}
-      />
 
       {/* ── Main area ── */}
       <div className="chat-main-v2">
         {/* ════ TOP NAVIGATION BAR ════ */}
         <header className="chat-nav-v2">
-          {/* Left: hamburger + logo */}
+          {/* Left: logo only */}
           <div className="chat-nav-left">
-            <button
-              className="chat-nav-hamburger"
-              onClick={() => setSidebarOpen(v => !v)}
-              aria-label="Toggle sidebar"
-              title="Chat history"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="21" y2="12"/>
-                <line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
-            <div className="chat-nav-logo">
+            <div className="chat-nav-logo" style={{ marginLeft: '12px' }}>
               <img src="/images/logo.png" alt="tom.ai" width="26" height="26" style={{ borderRadius: '7px', objectFit: 'contain' }} />
               <span>tom.ai</span>
             </div>
@@ -346,7 +316,7 @@ const TodoList = () => {
               </svg>
               <span>Chat</span>
             </Link>
-            <Link to="/tasks" className="chat-nav-tab chat-nav-tab--active" id="nav-tasks-tab">
+            <Link to="/todos" className="chat-nav-tab chat-nav-tab--active" id="nav-tasks-tab">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/>
               </svg>

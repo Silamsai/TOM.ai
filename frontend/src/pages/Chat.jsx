@@ -62,7 +62,7 @@ const Chat = () => {
   const guest       = getGuestProfile();
   const displayName = user?.name?.split(' ')[0] || guest?.name?.split(' ')[0] || null;
 
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sessionId,   setSessionId]   = useState(() => getOrCreateCurrentSession().id);
   const [messages,    setMessages]    = useState([]);
   const [input,       setInput]       = useState('');
