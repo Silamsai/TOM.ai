@@ -335,7 +335,7 @@ const Chat = () => {
               </svg>
               <span>Chat</span>
             </Link>
-            <Link to="/tasks" className="chat-nav-tab" id="nav-tasks-tab">
+            <Link to="/todos" className="chat-nav-tab" id="nav-tasks-tab">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/>
               </svg>
