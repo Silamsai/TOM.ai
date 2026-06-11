@@ -27,10 +27,7 @@ const getGoogleAuthUrl = () => {
     client_id: process.env.GOOGLE_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: 'code',
-    scope: [
-      'openid profile email',
-      'https://www.googleapis.com/auth/gmail.readonly',  // Read Gmail
-    ].join(' '),
+    scope: 'openid profile email',  // Only basic scopes — no sensitive APIs needed for login
     access_type: 'offline',    // request refresh_token
     prompt: 'select_account',  // always show account chooser
     state: Math.random().toString(36).substring(2), // basic CSRF token
