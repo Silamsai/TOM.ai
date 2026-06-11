@@ -68,8 +68,8 @@ export const exchangeGoogleCode = (code) =>
 // ============================================================
 // CHAT
 // ============================================================
-export const sendChatMessage = (message, attachments = [], conversationId = null) =>
-  api.post('/chat/message', { message, attachments, conversationId });
+export const sendChatMessage = (message, attachments = [], conversationId = null, model = 'gemini-2.5-flash') =>
+  api.post('/chat/message', { message, attachments, conversationId, model });
 
 export const getChatHistory = (conversationId = null) =>
   api.get('/chat/history', { params: { conversationId } });

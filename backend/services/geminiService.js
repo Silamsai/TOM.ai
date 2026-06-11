@@ -9,6 +9,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
 const path = require('path');
+const axios = require('axios');
 const ChatHistory = require('../models/ChatHistory');
 const { buildRAGContext } = require('./ragService');
 
@@ -76,7 +77,80 @@ const mapMCPToolToGemini = (tool) => {
  * Sends a user message to Gemini and returns the AI response.
  * Drop-in replacement for claudeService.sendMessage()
  */
-const sendMessage = async (userId, userMessage, user) => {
+const callOpenAI = async (model, userMessage, history, systemPrompt) => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  const messages = [
+    { role: 'system', content: systemPrompt }
+  ];
+  
+  history.forEach(h => {
+    messages.push({ role: 'user', content: h.userMessage || '' });
+    messages.push({ role: 'assistant', content: h.claudeResponse || '' });
+  });
+
+  const textMsg = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
+  messages.push({ role: 'user', content: textMsg });
+
+  const res = await axios.post('https://api.openai.com/v1/chat/completions', {
+    model: model === 'gpt-4o-mini' ? 'gpt-4o-mini' : 'gpt-4o',
+    messages,
+    max_tokens: 2048
+  }, {
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const choice = res.data.choices[0];
+  return {
+    response: choice.message.content,
+    usage: {
+      input: res.data.usage?.prompt_tokens || 0,
+      output: res.data.usage?.completion_tokens || 0
+    }
+  };
+};
+
+const callAnthropic = async (model, userMessage, history, systemPrompt) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const messages = [];
+  
+  history.forEach(h => {
+    messages.push({ role: 'user', content: h.userMessage || '' });
+    messages.push({ role: 'assistant', content: h.claudeResponse || '' });
+  });
+
+  const textMsg = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
+  messages.push({ role: 'user', content: textMsg });
+
+  const res = await axios.post('https://api.anthropic.com/v1/messages', {
+    model: model === 'claude-4.8-opus' ? 'claude-3-opus-20240229' : 'claude-3-5-sonnet-20241022',
+    system: systemPrompt,
+    messages,
+    max_tokens: 2048
+  }, {
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json'
+    }
+  });
+
+  return {
+    response: res.data.content[0].text,
+    usage: {
+      input: res.data.usage?.input_tokens || 0,
+      output: res.data.usage?.output_tokens || 0
+    }
+  };
+};
+
+/**
+ * Sends a user message to Gemini and returns the AI response.
+ * Drop-in replacement for claudeService.sendMessage()
+ */
+const sendMessage = async (userId, userMessage, user, selectedModel = 'gemini-2.5-flash') => {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey || apiKey === 'your_gemini_api_key_here') {
@@ -91,8 +165,9 @@ const sendMessage = async (userId, userMessage, user) => {
 
   // Fetch recent chat history from MongoDB for context memory
   let formattedHistory = [];
+  let rawHistory = [];
   try {
-    const rawHistory = await ChatHistory.find({ userId })
+    rawHistory = await ChatHistory.find({ userId })
       .sort({ timestamp: -1 })
       .limit(8)
       .lean();
@@ -109,11 +184,14 @@ const sendMessage = async (userId, userMessage, user) => {
   }
 
   // Models available for this API key
-  const models = [
+  let models = [
     'gemini-2.5-flash',
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',
   ];
+  if (selectedModel === 'gemini-2.5-pro') {
+    models = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+  }
 
   // Retrieve relevant personal context (RAG)
   const userText = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
@@ -131,7 +209,20 @@ const sendMessage = async (userId, userMessage, user) => {
     personaGuideline = `- **AI Assistant Persona (Empathetic Coach)**: You are deeply compassionate, listening, validating, and incredibly supportive. Provide gentle guidance, validate feelings when appropriate, and speak with extreme warmth, patience, and encouragement.`;
   }
 
-  const systemPrompt = `You are TOM.AI, a smart, friendly, empathetic, and highly capable personal AI assistant for ${user?.name || 'the user'}.
+  let simulationGuideline = '';
+  if (selectedModel === 'gemini-3.5-flash') {
+    simulationGuideline = `\n- **AI Assistant Model (Gemini 3.5 Flash - Simulated)**: Respond in a prompt, cutting-edge, extremely intelligent, fast, and helpful tone. Maintain the persona of the latest generation of Gemini models.`;
+  } else if (selectedModel === 'gpt-4o') {
+    simulationGuideline = `\n- **AI Assistant Model (GPT-4o - Simulated)**: Emulate OpenAI's assistant style: highly structured, very detailed, organized with clear headings and markdown tables where applicable, friendly but professional, and highly capable in coding.`;
+  } else if (selectedModel === 'gpt-4o-mini') {
+    simulationGuideline = `\n- **AI Assistant Model (GPT-4o mini - Simulated)**: Emulate a fast, lightweight, and conversational assistant that provides concise, crisp, and direct answers without unnecessary fluff.`;
+  } else if (selectedModel === 'claude-3.5-sonnet') {
+    simulationGuideline = `\n- **AI Assistant Model (Claude 3.5 Sonnet - Simulated)**: Emulate Anthropic's assistant style: exceptionally articulate, intellectually deep, highly nuanced, avoiding typical AI canned phrases or preambles, and writing with extreme clarity, elegance, and precision.`;
+  } else if (selectedModel === 'claude-4.8-opus') {
+    simulationGuideline = `\n- **AI Assistant Model (Claude 4.8 Opus - Simulated)**: Emulate a masterful, extremely deep-thinking, creative, and empathetic assistant that excels in philosophy, coding, math, and long-form narrative. Write detailed, rich, and deeply explained responses with warmth.`;
+  }
+
+  const systemPrompt = `You are TOM.AI, a smart, friendly, empathetic, and highly capable personal AI assistant for ${user?.name || 'the user'}.${simulationGuideline}
 
 You help with anything: general knowledge, science, history, math, coding, writing, task planning, and everyday questions.
 You ALSO have access to the user's Gmail via tools. If the user asks to read, search, or check their emails, USE THE TOOLS PROVIDED.
@@ -145,7 +236,7 @@ ${personaGuideline}
 - Answer QUICKLY, naturally, and concisely. Keep responses conversational, snappy, and human-like.
 - **Adaptive Formatting Styles**:
   * If the user requests a "sheet style" or "table style", format the data (such as emails, tasks, etc.) into clean Markdown tables with columns.
-  * If the user requests a "report style", format the response with clear headers, bullet points, summary sections, and key takeaways.
+  * If the user requests a "report style", format the response with clear headings, bullet points, summary sections, and key takeaways.
   * Avoid unnecessary preambles or explanations unless requested.
 - Show emotional intelligence and empathy: match the user's tone (humorous, serious, excited, or relaxed).
 - Format lists and code using markdown when helpful.
@@ -154,6 +245,26 @@ ${personaGuideline}
 
 Current user: ${user?.name || 'User'} (${user?.email || ''})
 Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST${ragContext}`;
+
+  // Call OpenAI API directly if key is configured
+  if (selectedModel && selectedModel.startsWith('gpt-') && process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here') {
+    try {
+      console.log(`[OpenAI] Routing to real OpenAI API with model: ${selectedModel}`);
+      return await callOpenAI(selectedModel, userMessage, rawHistory, systemPrompt);
+    } catch (openaiErr) {
+      console.error('[OpenAI] Failed, falling back to Gemini simulation. Error:', openaiErr.message);
+    }
+  }
+
+  // Call Anthropic API directly if key is configured
+  if (selectedModel && selectedModel.startsWith('claude-') && process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here') {
+    try {
+      console.log(`[Anthropic] Routing to real Anthropic API with model: ${selectedModel}`);
+      return await callAnthropic(selectedModel, userMessage, rawHistory, systemPrompt);
+    } catch (anthropicErr) {
+      console.error('[Anthropic] Failed, falling back to Gemini simulation. Error:', anthropicErr.message);
+    }
+  }
 
   let lastError;
 

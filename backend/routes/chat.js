@@ -14,7 +14,7 @@ router.use(authMiddleware);
 // ============================================================
 router.post('/message', async (req, res, next) => {
   try {
-    const { message, attachments, conversationId } = req.body;
+    const { message, attachments, conversationId, model } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ success: false, message: ERRORS.MESSAGE_REQUIRED });
@@ -24,12 +24,12 @@ router.post('/message', async (req, res, next) => {
     const user = await User.findById(req.userId).select('name email aiPersona');
     if (!user) return res.status(404).json({ success: false, message: ERRORS.NOT_FOUND });
 
-    // Send message to Gemini AI
+    // Send message to Gemini AI (or selected model)
     let payload = message.trim();
     if (attachments && attachments.length > 0) {
       payload = { text: message.trim(), attachments };
     }
-    const { response, usage } = await sendMessage(req.userId, payload, user);
+    const { response, usage } = await sendMessage(req.userId, payload, user, model);
 
     // Persist conversation to database
     const chat = await ChatHistory.create({
@@ -38,6 +38,7 @@ router.post('/message', async (req, res, next) => {
       claudeResponse: response,
       tokens: { input: usage.input, output: usage.output },
       conversationId: conversationId || null,
+      model: model || 'gemini-2.5-flash',
     });
 
     // Index chat in RAG Vector Store

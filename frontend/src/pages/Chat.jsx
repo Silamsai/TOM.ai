@@ -55,6 +55,65 @@ const SUGGESTIONS = [
   { icon: '😄', text: 'Tell me a joke' },
 ];
 
+const MODELS = [
+  {
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    shortName: 'Flash 2.5',
+    desc: 'Fast, responsive & multimodal',
+    color: '#38bdf8',
+    icon: '⚡'
+  },
+  {
+    id: 'gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    shortName: 'Pro 2.5',
+    desc: 'Advanced reasoning & complex coding',
+    color: '#818cf8',
+    icon: '🧠'
+  },
+  {
+    id: 'gemini-3.5-flash',
+    name: 'Gemini 3.5 Flash',
+    shortName: 'Gemini 3.5',
+    desc: 'Cutting-edge simulated speed & intelligence',
+    color: '#a855f7',
+    icon: '✨'
+  },
+  {
+    id: 'gpt-4o',
+    name: 'GPT-4o',
+    shortName: 'GPT-4o',
+    desc: 'OpenAI flagship language & vision model',
+    color: '#10b981',
+    icon: '🤖'
+  },
+  {
+    id: 'gpt-4o-mini',
+    name: 'GPT-4o mini',
+    shortName: 'GPT-4o mini',
+    desc: 'Fast, lightweight & highly capable',
+    color: '#34d399',
+    icon: '🔹'
+  },
+  {
+    id: 'claude-3.5-sonnet',
+    name: 'Claude 3.5 Sonnet',
+    shortName: 'Sonnet 3.5',
+    desc: 'Anthropic state-of-the-art precision & writing',
+    color: '#f59e0b',
+    icon: '✍️'
+  },
+  {
+    id: 'claude-4.8-opus',
+    name: 'Claude 4.8 Opus',
+    shortName: 'Claude Opus 4.8',
+    desc: 'Simulated masterful deep reasoning & creativity',
+    color: '#f97316',
+    icon: '🎭'
+  }
+];
+
 /* ── Main Chat component ── */
 const Chat = () => {
   const token       = getToken();
@@ -72,6 +131,20 @@ const Chat = () => {
   const [error,       setError]       = useState('');
   const [theme,       setTheme]       = useState(getTheme);
   const [connectOpen, setConnectOpen] = useState(false);
+
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('tom_ai_model') || 'gemini-2.5-flash');
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const modelDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target)) {
+        setShowModelDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
@@ -156,14 +229,14 @@ const Chat = () => {
       if (token) {
         const res = await sendChatMessage(
           trimmed || `Please review the attached file: ${sentAttachments[0]?.fileName}`,
-          sentAttachments, sessionId
+          sentAttachments, sessionId, selectedModel
         );
         const { botResponse, timestamp } = res.data.data;
         botText = botResponse;
         const botMsg = { type: 'bot', message: botText, timestamp, id: `b-${Date.now()}` };
         setMessages(prev => [...prev, botMsg]);
       } else {
-        botText = await generateGuestResponse(trimmed);
+        botText = await generateGuestResponse(trimmed, selectedModel);
         const botMsg = { type: 'bot', message: botText, timestamp: new Date().toISOString(), id: `b-${Date.now()}` };
         addMessage(sessionId, userMsg);
         addMessage(sessionId, botMsg);
@@ -206,87 +279,152 @@ const Chat = () => {
     .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2));
 
   /* ── Shared input bar ── */
-  const renderInputBar = () => (
-    <div className="chat-input-area-v2">
-      {replyingTo && (
-        <div className="reply-preview-box" style={{ background: '#1e1e2e', padding: '8px 14px', borderRadius: '12px 12px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <span style={{ fontSize: '12px', color: '#a5f3fc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            ↩ Replying to: {replyingTo.substring(0, 80).replace(/\n/g, ' ')}...
-          </span>
-          <button onClick={() => setReplyingTo(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 4px' }}>✕</button>
-        </div>
-      )}
-      {attachments.length > 0 && (
-        <div style={{ background: '#1e1e2e', padding: '8px 14px', borderRadius: replyingTo ? '0' : '12px 12px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <span style={{ fontSize: '12px', color: '#a5f3fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            📎 {attachments[0].fileName}
-          </span>
-          <button onClick={() => setAttachments([])} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 4px' }}>✕</button>
-        </div>
-      )}
+  const renderInputBar = () => {
+    const currentModelObj = MODELS.find(m => m.id === selectedModel) || MODELS[0];
+    
+    return (
+      <div className="chat-input-area-v2">
+        {replyingTo && (
+          <div className="reply-preview-box" style={{ background: '#12121a', padding: '8px 14px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ fontSize: '12px', color: '#a5f3fc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              ↩ Replying to: {replyingTo.substring(0, 80).replace(/\n/g, ' ')}...
+            </span>
+            <button onClick={() => setReplyingTo(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 4px' }}>✕</button>
+          </div>
+        )}
+        {attachments.length > 0 && (
+          <div style={{ background: '#12121a', padding: '8px 14px', borderRadius: replyingTo ? '0' : '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ fontSize: '12px', color: '#a5f3fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              📎 {attachments[0].fileName}
+            </span>
+            <button onClick={() => setAttachments([])} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 4px' }}>✕</button>
+          </div>
+        )}
 
-      {/* Glowing input card */}
-      <div className="chat-input-glow-wrap">
-        <div className="chat-input-card">
-          {/* Top: textarea */}
-          <textarea
-            id="chat-input"
-            ref={textareaRef}
-            className="chat-input-v2"
-            placeholder="Ask anything..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={1}
-            disabled={loading}
-            aria-label="Chat message input"
-          />
-          {/* Bottom: pill buttons + send */}
-          <div className="chat-input-footer">
+        {/* Apple MacBook Liquid Glass Input Bar */}
+        <div className="chat-input-glow-wrap-mac">
+          <div className="chat-input-card-mac">
+            {/* Left: Plus attach button */}
             <input type="file" ref={fileInputRef} hidden onChange={handleFileUpload} accept="image/*,application/pdf" />
             <button
-              className="chat-pill-btn"
+              className="chat-attach-btn-mac"
               onClick={() => fileInputRef.current?.click()}
               disabled={loading}
               title="Attach file"
+              type="button"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            </button>
-            <button className="chat-pill-btn" title="Normal mode" disabled={loading}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              <span>Normal</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
             </button>
 
-            <div style={{ flex: 1 }} />
+            {/* Center: Textarea with "Ask tom" placeholder */}
+            <textarea
+              id="chat-input"
+              ref={textareaRef}
+              className="chat-input-v2-mac"
+              placeholder="Ask tom"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={1}
+              disabled={loading}
+              aria-label="Chat message input"
+            />
 
-            {/* Send button */}
-            <button
-              id="chat-send-btn"
-              className="chat-send-btn-v2"
-              onClick={() => sendMessage(input)}
-              disabled={loading || (!input.trim() && attachments.length === 0)}
-              aria-label="Send message"
-            >
-              {loading ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10" opacity="0.25"/>
-                  <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round">
-                    <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/>
-                  </path>
+            {/* Right: Model Selector + Mic + Send */}
+            <div className="chat-input-controls-right-mac">
+              {/* Dynamic Model Dropdown */}
+              <div className="chat-model-select-wrapper-mac" ref={modelDropdownRef}>
+                <button 
+                  className="chat-model-pill-mac" 
+                  onClick={() => setShowModelDropdown(!showModelDropdown)}
+                  type="button"
+                  title="Choose AI Model"
+                >
+                  <span className="chat-model-indicator-dot-mac" style={{ backgroundColor: currentModelObj.color }} />
+                  <span>{currentModelObj.shortName}</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: '4px', transform: showModelDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                
+                {showModelDropdown && (
+                  <div className="chat-model-dropdown-mac">
+                    <div className="chat-model-dropdown-header-mac">Select AI Model</div>
+                    <div className="chat-model-dropdown-list-mac">
+                      {MODELS.map(m => (
+                        <button
+                          key={m.id}
+                          className={`chat-model-dropdown-item-mac ${selectedModel === m.id ? 'active' : ''}`}
+                          onClick={() => {
+                            setSelectedModel(m.id);
+                            localStorage.setItem('tom_ai_model', m.id);
+                            setShowModelDropdown(false);
+                          }}
+                          type="button"
+                        >
+                          <span className="chat-model-item-icon-mac">{m.icon}</span>
+                          <div className="chat-model-item-info-mac">
+                            <div className="chat-model-item-name-mac">
+                              {m.name}
+                              {['gemini-3.5-flash', 'claude-4.8-opus'].includes(m.id) ? (
+                                <span className="chat-model-sim-badge-mac">SIMULATED</span>
+                              ) : null}
+                            </div>
+                            <div className="chat-model-item-desc-mac">{m.desc}</div>
+                          </div>
+                          {selectedModel === m.id && (
+                            <span className="chat-model-item-check-mac">✓</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Mic Icon */}
+              <button className="chat-mic-btn-mac" type="button" title="Voice input (Coming soon)" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
                 </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-              )}
-            </button>
+              </button>
+
+              {/* Send Button */}
+              <button
+                id="chat-send-btn"
+                className="chat-send-btn-mac"
+                onClick={() => sendMessage(input)}
+                disabled={loading || (!input.trim() && attachments.length === 0)}
+                aria-label="Send message"
+                type="button"
+              >
+                {loading ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10" opacity="0.25"/>
+                    <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round">
+                      <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/>
+                    </path>
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <p className="chat-input-hint">
-        {token ? user?.email || user?.name || '' : 'Running as guest · Sign In to sync'}
-      </p>
-    </div>
-  );
+        <p className="chat-input-hint-mac">
+          tom.ai is an AI assistant and can make mistakes.
+        </p>
+      </div>
+    );
+  };
 
   return (
     <div className="chat-page-v2">

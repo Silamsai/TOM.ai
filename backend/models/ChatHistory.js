@@ -37,6 +37,11 @@ const chatHistorySchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    /** The AI model used for this exchange */
+    model: {
+      type: String,
+      default: 'gemini-2.5-flash',
+    },
   },
   { timestamps: false } // manual timestamp field `timestamp` is used
 );
