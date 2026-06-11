@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getGoogleAuthUrl,
+  getGmailAuthUrl,
   exchangeCodeForToken,
   getUserInfoFromGoogle,
 } = require('../services/googleAuthService');
@@ -9,8 +10,7 @@ const User = require('../models/User');
 
 // ============================================================
 // GET /api/auth/google/url
-// Returns the Google OAuth authorization URL.
-// Frontend redirects user here to start Google login.
+// Returns the Google OAuth URL for basic sign-in (no sensitive scopes).
 // ============================================================
 router.get('/url', (_req, res) => {
   try {
@@ -19,6 +19,20 @@ router.get('/url', (_req, res) => {
   } catch (error) {
     console.error('[Google Auth] Failed to generate auth URL:', error.message);
     res.status(500).json({ success: false, message: 'Failed to generate Google auth URL.' });
+  }
+});
+
+// ============================================================
+// GET /api/auth/google/gmail-url
+// Returns the OAuth URL for Gmail connection (includes gmail.readonly scope).
+// ============================================================
+router.get('/gmail-url', (_req, res) => {
+  try {
+    const authUrl = getGmailAuthUrl();
+    res.status(200).json({ success: true, authUrl });
+  } catch (error) {
+    console.error('[Google Auth] Failed to generate Gmail auth URL:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to generate Gmail auth URL.' });
   }
 });
 
@@ -53,6 +67,8 @@ router.post('/callback', async (req, res, next) => {
     }
 
     const { access_token, refresh_token } = tokenData;
+    const grantedScopes = tokenData.scope || '';
+    const hasGmailScope = grantedScopes.includes('gmail.readonly');
 
     // 2. Fetch user profile from Google
     let googleUser;
@@ -86,6 +102,14 @@ router.post('/callback', async (req, res, next) => {
         if (picture && !user.picture) user.picture = picture;
         user.lastLoginMethod = 'google';
         user.lastLogin = new Date();
+        
+        if (hasGmailScope) {
+          user.tokens = user.tokens || {};
+          user.tokens.gmail = access_token;
+          user.permissions = user.permissions || {};
+          user.permissions.gmail = true;
+        }
+
         await user.save({ validateBeforeSave: false });
       } else {
         // Create a brand-new user from Google data
@@ -100,6 +124,8 @@ router.post('/callback', async (req, res, next) => {
           signupMethod: 'google',
           lastLoginMethod: 'google',
           lastLogin: new Date(),
+          tokens: hasGmailScope ? { gmail: access_token } : {},
+          permissions: hasGmailScope ? { gmail: true } : {},
         });
       }
     } else {
@@ -109,6 +135,14 @@ router.post('/callback', async (req, res, next) => {
       user.lastLoginMethod = 'google';
       user.lastLogin = new Date();
       if (picture) user.picture = picture;
+
+      if (hasGmailScope) {
+        user.tokens = user.tokens || {};
+        user.tokens.gmail = access_token;
+        user.permissions = user.permissions || {};
+        user.permissions.gmail = true;
+      }
+
       await user.save({ validateBeforeSave: false });
     }
 

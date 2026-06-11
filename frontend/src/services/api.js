@@ -62,6 +62,9 @@ export const logout = () => clearAll();
 export const getGoogleAuthUrl = () =>
   api.get('/auth/google/url');
 
+export const getGmailAuthUrl = () =>
+  api.get('/auth/google/gmail-url');
+
 export const exchangeGoogleCode = (code) =>
   api.post('/auth/google/callback', { code });
 

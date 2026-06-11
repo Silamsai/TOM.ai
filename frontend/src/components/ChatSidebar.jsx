@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getAllSessions, createSession, deleteSession, setCurrentId, getCurrentId, renameSession } from '../utils/chatSessions';
-import { getGoogleAuthUrl, getPublicMcps, deleteChatConversation } from '../services/api';
+import { getGmailAuthUrl, getPublicMcps, deleteChatConversation } from '../services/api';
 import { getUser, getGuestProfile } from '../utils/storage';
 import {
   IconTrash, IconClose, IconPencil,
@@ -71,7 +71,7 @@ export const ConnectModal = ({ onClose }) => {
     if (appId === 'gmail') {
       setConnecting('gmail');
       try {
-        const res = await getGoogleAuthUrl();
+        const res = await getGmailAuthUrl();
         const data = res.data;
         if (data.authUrl) {
           localStorage.setItem('tom_gmail_pending', 'true');

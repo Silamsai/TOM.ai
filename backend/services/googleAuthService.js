@@ -18,19 +18,42 @@ const REDIRECT_URI =
   process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/auth/google/callback';
 
 /**
- * Build the Google OAuth authorization URL.
- * The frontend redirects the user to this URL.
- * @returns {string} full authorization URL
+ * Build the Google OAuth authorization URL for basic sign-in.
+ * Only requests openid, profile, email — NO sensitive scopes.
+ * This avoids the "Google hasn't verified this app" warning.
  */
 const getGoogleAuthUrl = () => {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: 'code',
-    scope: 'openid profile email',  // Only basic scopes — no sensitive APIs needed for login
-    access_type: 'offline',    // request refresh_token
-    prompt: 'select_account',  // always show account chooser
-    state: Math.random().toString(36).substring(2), // basic CSRF token
+    scope: 'openid profile email',
+    access_type: 'offline',
+    prompt: 'select_account',
+    state: Math.random().toString(36).substring(2),
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+};
+
+/**
+ * Build the Google OAuth authorization URL for Gmail connection.
+ * Requests gmail.readonly in addition to basic scopes.
+ * During development this shows an "unverified app" warning —
+ * click Advanced → Go to app to proceed.
+ */
+const getGmailAuthUrl = () => {
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    response_type: 'code',
+    scope: [
+      'openid profile email',
+      'https://www.googleapis.com/auth/gmail.readonly',
+    ].join(' '),
+    access_type: 'offline',
+    prompt: 'consent',         // always ask, so refresh_token is always returned
+    include_granted_scopes: 'true',
+    state: `gmail_${Math.random().toString(36).substring(2)}`,
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 };
@@ -64,4 +87,4 @@ const getUserInfoFromGoogle = async (accessToken) => {
   return response.data;
 };
 
-module.exports = { getGoogleAuthUrl, exchangeCodeForToken, getUserInfoFromGoogle };
+module.exports = { getGoogleAuthUrl, getGmailAuthUrl, exchangeCodeForToken, getUserInfoFromGoogle };

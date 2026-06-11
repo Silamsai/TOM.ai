@@ -58,10 +58,10 @@ router.get('/emails', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('+googleToken +googleRefreshToken');
 
-    if (!user?.googleToken) {
+    if (!user?.googleToken || !user?.permissions?.gmail) {
       return res.status(403).json({
         success: false,
-        message: 'Gmail not connected. Please sign out and log in again with Google to grant Gmail access.',
+        message: 'Gmail not connected. Please connect Gmail in the sidebar to grant Gmail access.',
       });
     }
 
@@ -83,6 +83,9 @@ router.get('/emails', authMiddleware, async (req, res) => {
           });
           const newToken = refreshRes.data.access_token;
           user.googleToken = newToken;
+          if (user.tokens) {
+            user.tokens.gmail = newToken;
+          }
           await user.save({ validateBeforeSave: false });
           emails = await fetchEmails(newToken, query, maxResults);
         } catch {

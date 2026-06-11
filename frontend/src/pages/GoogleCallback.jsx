@@ -17,6 +17,10 @@ const GoogleCallback = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const hasRun = useRef(false); // prevent double-call in strict mode
 
+  const isGmailConnection =
+    searchParams.get('state')?.startsWith('gmail_') ||
+    localStorage.getItem('tom_gmail_pending') === 'true';
+
   useEffect(() => {
     if (hasRun.current) return;
     hasRun.current = true;
@@ -40,6 +44,15 @@ const GoogleCallback = () => {
       return;
     }
 
+    // Prevent React 18 Strict Mode duplicate execution
+    const sessionKey = `google_auth_code_${code}`;
+    if (sessionStorage.getItem(sessionKey)) {
+      console.log('[GoogleCallback] Authorization code already processed or processing. Skipping.');
+      // If a previous call succeeded, it will redirect shortly. We don't want to reset status to processing.
+      return;
+    }
+    sessionStorage.setItem(sessionKey, 'true');
+
     const processCode = async () => {
       try {
         const res = await exchangeGoogleCode(code);
@@ -57,6 +70,7 @@ const GoogleCallback = () => {
         setTimeout(() => navigate('/chat', { replace: true }), 800);
       } catch (err) {
         console.error('[GoogleCallback] Exchange failed:', err);
+        sessionStorage.removeItem(sessionKey); // let them retry if it failed
         const msg =
           err.response?.data?.message ||
           'Something went wrong during sign-in. Please try again.';
@@ -81,10 +95,12 @@ const GoogleCallback = () => {
           <div style={{ padding: '12px 0' }}>
             <div className="google-callback-spinner" />
             <h2 className="auth-title" style={{ marginTop: '20px' }}>
-              Signing you in…
+              {isGmailConnection ? 'Connecting Gmail…' : 'Signing you in…'}
             </h2>
             <p className="auth-subtitle">
-              Verifying your Google account. This only takes a moment.
+              {isGmailConnection
+                ? 'Saving your Gmail integration settings. This only takes a moment.'
+                : 'Verifying your Google account. This only takes a moment.'}
             </p>
           </div>
         )}
@@ -92,8 +108,14 @@ const GoogleCallback = () => {
         {status === 'success' && (
           <div style={{ padding: '12px 0' }}>
             <span style={{ fontSize: '48px', display: 'block', marginBottom: '12px' }}>✅</span>
-            <h2 className="auth-title">Welcome to TOM.AI!</h2>
-            <p className="auth-subtitle">Redirecting you to your assistant…</p>
+            <h2 className="auth-title">
+              {isGmailConnection ? 'Gmail Connected!' : 'Welcome to TOM.AI!'}
+            </h2>
+            <p className="auth-subtitle">
+              {isGmailConnection
+                ? 'Gmail integration configured successfully. Redirecting…'
+                : 'Redirecting you to your assistant…'}
+            </p>
           </div>
         )}
 
@@ -101,7 +123,7 @@ const GoogleCallback = () => {
           <div style={{ padding: '12px 0' }}>
             <span style={{ fontSize: '48px', display: 'block', marginBottom: '12px' }}>😕</span>
             <h2 className="auth-title" style={{ color: 'var(--error, #f87171)' }}>
-              Sign-in Failed
+              {isGmailConnection ? 'Connection Failed' : 'Sign-in Failed'}
             </h2>
             <div className="alert alert-error" role="alert" style={{ marginTop: '16px' }}>
               ⚠️ {errorMessage}
