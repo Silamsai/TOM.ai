@@ -301,29 +301,14 @@ const Chat = () => {
           </div>
         )}
 
-        {/* Apple MacBook Liquid Glass Input Bar */}
-        <div className="chat-input-glow-wrap-mac">
-          <div className="chat-input-card-mac">
-            {/* Left: Plus attach button */}
-            <input type="file" ref={fileInputRef} hidden onChange={handleFileUpload} accept="image/*,application/pdf" />
-            <button
-              className="chat-attach-btn-mac"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading}
-              title="Attach file"
-              type="button"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-
-            {/* Center: Textarea with "Ask tom" placeholder */}
+        {/* Color-changing animated glow border input */}
+        <div className="chat-input-glow-wrap">
+          <div className="chat-input-card">
+            {/* Textarea */}
             <textarea
               id="chat-input"
               ref={textareaRef}
-              className="chat-input-v2-mac"
+              className="chat-input-v2"
               placeholder="Ask tom"
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -333,31 +318,47 @@ const Chat = () => {
               aria-label="Chat message input"
             />
 
-            {/* Right: Model Selector + Mic + Send */}
-            <div className="chat-input-controls-right-mac">
-              {/* Dynamic Model Dropdown */}
-              <div className="chat-model-select-wrapper-mac" ref={modelDropdownRef}>
-                <button 
-                  className="chat-model-pill-mac" 
+            {/* Bottom controls row */}
+            <div className="chat-input-footer">
+              <input type="file" ref={fileInputRef} hidden onChange={handleFileUpload} accept="image/*,application/pdf" />
+
+              {/* Attach file pill */}
+              <button
+                className="chat-pill-btn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading}
+                title="Attach file"
+                type="button"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+                <span>Attach</span>
+              </button>
+
+              {/* Model selector pill + dropdown */}
+              <div className="chat-model-select-wrapper" ref={modelDropdownRef}>
+                <button
+                  className="chat-pill-btn"
                   onClick={() => setShowModelDropdown(!showModelDropdown)}
                   type="button"
                   title="Choose AI Model"
                 >
-                  <span className="chat-model-indicator-dot-mac" style={{ backgroundColor: currentModelObj.color }} />
+                  <span className="chat-model-dot" style={{ backgroundColor: currentModelObj.color, boxShadow: `0 0 5px ${currentModelObj.color}` }} />
                   <span>{currentModelObj.shortName}</span>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: '4px', transform: showModelDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: '1px', transform: showModelDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
                 </button>
-                
+
                 {showModelDropdown && (
-                  <div className="chat-model-dropdown-mac">
-                    <div className="chat-model-dropdown-header-mac">Select AI Model</div>
-                    <div className="chat-model-dropdown-list-mac">
+                  <div className="chat-model-dropdown">
+                    <div className="chat-model-dropdown-header">Select AI Model</div>
+                    <div className="chat-model-dropdown-list">
                       {MODELS.map(m => (
                         <button
                           key={m.id}
-                          className={`chat-model-dropdown-item-mac ${selectedModel === m.id ? 'active' : ''}`}
+                          className={`chat-model-item ${selectedModel === m.id ? 'active' : ''}`}
                           onClick={() => {
                             setSelectedModel(m.id);
                             localStorage.setItem('tom_ai_model', m.id);
@@ -365,18 +366,18 @@ const Chat = () => {
                           }}
                           type="button"
                         >
-                          <span className="chat-model-item-icon-mac">{m.icon}</span>
-                          <div className="chat-model-item-info-mac">
-                            <div className="chat-model-item-name-mac">
+                          <span className="chat-model-item-emoji">{m.icon}</span>
+                          <div className="chat-model-item-body">
+                            <div className="chat-model-item-name">
                               {m.name}
                               {['gemini-3.5-flash', 'claude-4.8-opus'].includes(m.id) ? (
-                                <span className="chat-model-sim-badge-mac">SIMULATED</span>
+                                <span className="chat-model-sim-badge">SIMULATED</span>
                               ) : null}
                             </div>
-                            <div className="chat-model-item-desc-mac">{m.desc}</div>
+                            <div className="chat-model-item-desc">{m.desc}</div>
                           </div>
                           {selectedModel === m.id && (
-                            <span className="chat-model-item-check-mac">✓</span>
+                            <span className="chat-model-item-check">✓</span>
                           )}
                         </button>
                       ))}
@@ -385,20 +386,12 @@ const Chat = () => {
                 )}
               </div>
 
-              {/* Mic Icon */}
-              <button className="chat-mic-btn-mac" type="button" title="Voice input (Coming soon)" disabled>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                  <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-              </button>
+              <div style={{ flex: 1 }} />
 
-              {/* Send Button */}
+              {/* Send button */}
               <button
                 id="chat-send-btn"
-                className="chat-send-btn-mac"
+                className="chat-send-btn-v2"
                 onClick={() => sendMessage(input)}
                 disabled={loading || (!input.trim() && attachments.length === 0)}
                 aria-label="Send message"
