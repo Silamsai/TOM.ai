@@ -258,15 +258,21 @@
   display: flex; flex-direction: column;
   align-items: center; gap: 14px;
 }
-.chat-welcome-logo,
+.chat-welcome-logo {
+  display: block;
+  overflow: visible;
+}
 .chat-welcome-logo .animated-logo__img,
+.chat-welcome-logo .animated-logo--lg,
 .chat-welcome-logo .animated-logo__canvas {
-  width: 80px;
-  height: 80px;
+  width: 96px;
+  height: 96px;
   object-fit: contain;
-  border-radius: 20px;
+  border-radius: 22px;
   animation: float 3.5s ease-in-out infinite;
   box-shadow: 0 0 40px rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.4);
+  display: block;
+  overflow: visible;
 }
 .chat-welcome-name {
   font-size: 28px; font-weight: 800;
@@ -935,9 +941,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   overflow-y: auto;
-  padding: 32px 24px 40px;
+  padding: 48px 24px 40px;
   box-sizing: border-box;
 }
 

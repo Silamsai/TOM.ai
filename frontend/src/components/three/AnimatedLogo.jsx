@@ -20,7 +20,7 @@ const AnimatedLogo = ({
   className = '',
 }) => {
   const [imgError, setImgError] = useState(false);
-  const sizes = { sm: 32, md: 48, lg: 80 };
+  const sizes = { sm: 32, md: 48, lg: 96 };
   const px = sizes[size] || sizes.md;
 
   const show3d = use3d && !FEATURES.prefersReducedMotion();

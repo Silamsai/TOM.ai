@@ -20,6 +20,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
 }
 
 .animated-logo__canvas {
@@ -30,8 +31,10 @@
 }
 
 .animated-logo--lg .animated-logo__canvas {
-  min-width: 120px;
-  min-height: 120px;
+  min-width: 96px;
+  min-height: 96px;
+  width: 96px;
+  height: 96px;
 }
 
 .animated-logo__img {
