@@ -10,7 +10,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const VectorDocument = require('../models/VectorDocument');
 const PersonalDocument = require('../models/PersonalDocument');
-const pdfParse = require('pdf-parse');
 
 let genAIInstance = null;
 
@@ -190,6 +189,7 @@ const searchPersonalDocuments = async (userId, query, k = 6) => {
 const indexPersonalDocument = async (userId, file) => {
   let text = '';
   if (file.mimetype === 'application/pdf') {
+    const pdfParse = require('pdf-parse');
     const data = await pdfParse(file.buffer);
     text = data.text;
   } else {

@@ -70,7 +70,14 @@ app.use('/api/oauth', oauthRoutes);
 app.use('/api/gmail', gmailRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/user', userRoutes);
-app.use('/api/rag', ragRoutes);
+
+// RAG routes — wrapped in try-catch so module-load issues don't crash the whole server
+try {
+  app.use('/api/rag', ragRoutes);
+  console.log('✅ /api/rag routes registered.');
+} catch (ragErr) {
+  console.error('❌ Failed to register /api/rag routes:', ragErr.message);
+}
 
 // Health check
 app.get('/api/health', (_req, res) => {
