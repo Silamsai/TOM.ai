@@ -189,7 +189,7 @@ const searchPersonalDocuments = async (userId, query, k = 6) => {
 const indexPersonalDocument = async (userId, file) => {
   let text = '';
   if (file.mimetype === 'application/pdf') {
-    const pdfParse = require('pdf-parse');
+    const pdfParse = require('pdf-parse/lib/pdf-parse.js');
     const data = await pdfParse(file.buffer);
     text = data.text;
   } else {
