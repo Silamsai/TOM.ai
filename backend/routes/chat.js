@@ -14,7 +14,7 @@ router.use(authMiddleware);
 // ============================================================
 router.post('/message', async (req, res, next) => {
   try {
-    const { message, attachments, conversationId, model } = req.body;
+    const { message, attachments, conversationId, model, mode } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ success: false, message: ERRORS.MESSAGE_REQUIRED });
@@ -29,7 +29,7 @@ router.post('/message', async (req, res, next) => {
     if (attachments && attachments.length > 0) {
       payload = { text: message.trim(), attachments };
     }
-    const { response, usage } = await sendMessage(req.userId, payload, user, model);
+    const { response, usage } = await sendMessage(req.userId, payload, user, model, mode || 'standard');
 
     // Persist conversation to database
     const chat = await ChatHistory.create({

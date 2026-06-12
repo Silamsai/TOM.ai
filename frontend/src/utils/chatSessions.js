@@ -18,15 +18,19 @@ export const setCurrentId    = (id) => localStorage.setItem(CURRENT_KEY, id);
 
 export const getSession = (id) => load().find(s => s.id === id) || null;
 
-export const createSession = () => {
+export const createSession = (mode = 'standard') => {
   const id = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-  const session = { id, title: 'New Chat', messages: [], createdAt: Date.now(), updatedAt: Date.now() };
+  const session = { id, title: 'New Chat', messages: [], mode, createdAt: Date.now(), updatedAt: Date.now() };
   const sessions = load();
   sessions.push(session);
   save(sessions);
   setCurrentId(id);
   return session;
 };
+
+/** Return sessions matching the given mode (standard or personal) */
+export const getSessionsByMode = (mode = 'standard') =>
+  [...load()].filter(s => (s.mode || 'standard') === mode).sort((a, b) => b.updatedAt - a.updatedAt);
 
 export const updateSessionTitle = (id, firstUserMessage) => {
   const title = firstUserMessage.length > 40

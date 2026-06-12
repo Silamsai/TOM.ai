@@ -11,7 +11,7 @@ const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio
 const path = require('path');
 const axios = require('axios');
 const ChatHistory = require('../models/ChatHistory');
-const { buildRAGContext } = require('./ragService');
+const { buildRAGContext, searchPersonalDocuments } = require('./ragService');
 
 // ---- MCP Setup ----------------------------------------------------
 const mcpServerPath = path.join(__dirname, '../../MCP-servers/gmail-mcp/server.js');
@@ -150,7 +150,7 @@ const callAnthropic = async (model, userMessage, history, systemPrompt) => {
  * Sends a user message to Gemini and returns the AI response.
  * Drop-in replacement for claudeService.sendMessage()
  */
-const sendMessage = async (userId, userMessage, user, selectedModel = 'gemini-2.5-flash') => {
+const sendMessage = async (userId, userMessage, user, selectedModel = 'gemini-2.5-flash', mode = 'standard') => {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey || apiKey === 'your_gemini_api_key_here') {
@@ -195,7 +195,20 @@ const sendMessage = async (userId, userMessage, user, selectedModel = 'gemini-2.
 
   // Retrieve relevant personal context (RAG)
   const userText = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
-  const ragContext = await buildRAGContext(userId, userText);
+  let ragContext = '';
+  if (mode === 'personal') {
+    const results = await searchPersonalDocuments(userId, userText, 6);
+    if (results.length > 0) {
+      const contextLines = results.map(
+        (r, i) => `[Document: ${r.metadata?.fileName || 'source'}, Chunk: ${r.metadata?.chunkIndex || i + 1}]: ${r.content}`
+      );
+      ragContext = `\n\nCRITICAL CONTEXT FROM USER UPLOADED DOCUMENTS:\n${contextLines.join('\n\n')}\n\nINSTRUCTION: You must base your answer ONLY on the context above. State the name of the file/document where the information was found. If the answer cannot be found in the context, say: "I couldn't find the answer in your uploaded documents."`;
+    } else {
+      ragContext = `\n\nNo uploaded documents found in user's personal RAG pipeline. Tell the user politely that they need to upload documents first in the Knowledge Base panel to ask questions here.`;
+    }
+  } else {
+    ragContext = await buildRAGContext(userId, userText);
+  }
 
   const persona = user?.aiPersona || 'professional';
   let personaGuideline = '';
@@ -222,7 +235,20 @@ const sendMessage = async (userId, userMessage, user, selectedModel = 'gemini-2.
     simulationGuideline = `\n- **AI Assistant Model (Claude 4.8 Opus - Simulated)**: Emulate a masterful, extremely deep-thinking, creative, and empathetic assistant that excels in philosophy, coding, math, and long-form narrative. Write detailed, rich, and deeply explained responses with warmth.`;
   }
 
-  const systemPrompt = `You are TOM.AI, a smart, friendly, empathetic, and highly capable personal AI assistant for ${user?.name || 'the user'}.${simulationGuideline}
+  const systemPrompt = mode === 'personal'
+    ? `You are TOM.AI Personal, an advanced Retrieval-Augmented Generation (RAG) AI assistant for ${user?.name || 'the user'}.${simulationGuideline}
+
+Your primary and sole task is to answer the user's questions based exclusively on the provided retrieved context from their uploaded personal documents.
+
+Strict Guidelines:
+1. Base your response strictly on the retrieved context below. Do not make up facts or extrapolate beyond the document data.
+2. Cite the name of the file/document where you found the information. (e.g. "According to policy_brief.pdf...")
+3. If the context does not contain the answer, politely state: "I couldn't find the answer in your uploaded documents."
+4. Maintain a highly professional, accurate, clear, and structured tone. Avoid chatty filler words.
+
+Current user: ${user?.name || 'User'} (${user?.email || ''})
+Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST${ragContext}`
+    : `You are TOM.AI, a smart, friendly, empathetic, and highly capable personal AI assistant for ${user?.name || 'the user'}.${simulationGuideline}
 
 You help with anything: general knowledge, science, history, math, coding, writing, task planning, and everyday questions.
 You ALSO have access to the user's Gmail via tools. If the user asks to read, search, or check their emails, USE THE TOOLS PROVIDED.

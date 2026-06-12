@@ -15,6 +15,7 @@ const googleAuthRoutes = require('./routes/googleAuth');
 const gmailRoutes = require('./routes/gmail');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/user');
+const ragRoutes = require('./routes/rag');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -69,6 +70,7 @@ app.use('/api/oauth', oauthRoutes);
 app.use('/api/gmail', gmailRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/rag', ragRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

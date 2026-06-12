@@ -9,6 +9,8 @@
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const VectorDocument = require('../models/VectorDocument');
+const PersonalDocument = require('../models/PersonalDocument');
+const pdfParse = require('pdf-parse');
 
 let genAIInstance = null;
 
@@ -152,9 +154,132 @@ const buildRAGContext = async (userId, query) => {
   }
 };
 
+/**
+ * Searches user's uploaded personal documents using cosine similarity.
+ */
+const searchPersonalDocuments = async (userId, query, k = 6) => {
+  if (!query || !query.trim()) return [];
+  try {
+    const queryEmbedding = await getEmbedding(query);
+    const docs = await VectorDocument.find({ userId, 'metadata.type': 'personal_doc' }).lean();
+    if (docs.length === 0) return [];
+
+    const scoredDocs = docs.map((doc) => {
+      const score = cosineSimilarity(queryEmbedding, doc.embedding);
+      return {
+        content: doc.content,
+        score,
+        metadata: doc.metadata,
+      };
+    });
+
+    // Sort by score descending
+    scoredDocs.sort((a, b) => b.score - a.score);
+
+    // Return top k results with score > 0.60
+    return scoredDocs.filter((d) => d.score > 0.60).slice(0, k);
+  } catch (error) {
+    console.error('[RAG] Search personal documents failed:', error.message);
+    return [];
+  }
+};
+
+/**
+ * Parses, chunks, batch embeds and indexes a user file (PDF, TXT, MD).
+ */
+const indexPersonalDocument = async (userId, file) => {
+  let text = '';
+  if (file.mimetype === 'application/pdf') {
+    const data = await pdfParse(file.buffer);
+    text = data.text;
+  } else {
+    // Treat as plain text
+    text = file.buffer.toString('utf-8');
+  }
+
+  if (!text || !text.trim()) {
+    throw new Error('Document has no extractable text content.');
+  }
+
+  // Chunk text: 800 chars chunk size, 150 overlap
+  const chunkSize = 800;
+  const overlap = 150;
+  const chunks = [];
+  let i = 0;
+  while (i < text.length) {
+    chunks.push(text.slice(i, i + chunkSize));
+    i += chunkSize - overlap;
+  }
+
+  if (chunks.length === 0) {
+    throw new Error('No text chunks generated.');
+  }
+
+  // Create PersonalDocument metadata record first
+  const personalDoc = await PersonalDocument.create({
+    userId,
+    fileName: file.originalname,
+    fileSize: file.size,
+    mimeType: file.mimetype,
+    chunkCount: chunks.length,
+  });
+
+  try {
+    // Generate embeddings in batch
+    const genAI = getGenAI();
+    const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
+    
+    // Batch embed contents using the array of chunks
+    const result = await model.batchEmbedContents({
+      requests: chunks.map((chunk) => ({
+        content: { parts: [{ text: chunk }] },
+        model: 'models/text-embedding-004',
+      })),
+    });
+
+    const embeddings = result.embeddings.map((e) => e.values);
+
+    // Save vector documents
+    const docCreates = chunks.map((chunk, idx) => ({
+      userId,
+      content: chunk,
+      embedding: embeddings[idx],
+      metadata: {
+        type: 'personal_doc',
+        fileId: String(personalDoc._id),
+        fileName: file.originalname,
+        chunkIndex: idx,
+        uploadedAt: new Date(),
+      },
+    }));
+
+    await VectorDocument.insertMany(docCreates);
+    return personalDoc;
+  } catch (error) {
+    // Clean up metadata if indexing fails
+    await PersonalDocument.deleteOne({ _id: personalDoc._id });
+    throw error;
+  }
+};
+
+/**
+ * Deletes a personal document and all its indexed vector chunks.
+ */
+const deletePersonalDocument = async (userId, fileId) => {
+  await VectorDocument.deleteMany({
+    userId,
+    'metadata.type': 'personal_doc',
+    'metadata.fileId': String(fileId),
+  });
+  await PersonalDocument.deleteOne({ _id: fileId, userId });
+};
+
 module.exports = {
   indexDocument,
   searchDocuments,
+  searchPersonalDocuments,
+  indexPersonalDocument,
+  deletePersonalDocument,
   indexEmail,
   indexCalendarEvent,
   indexTask,

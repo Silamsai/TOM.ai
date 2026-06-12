@@ -71,8 +71,8 @@ export const exchangeGoogleCode = (code) =>
 // ============================================================
 // CHAT
 // ============================================================
-export const sendChatMessage = (message, attachments = [], conversationId = null, model = 'gemini-2.5-flash') =>
-  api.post('/chat/message', { message, attachments, conversationId, model });
+export const sendChatMessage = (message, attachments = [], conversationId = null, model = 'gemini-2.5-flash', mode = 'standard') =>
+  api.post('/chat/message', { message, attachments, conversationId, model, mode });
 
 export const getChatHistory = (conversationId = null) =>
   api.get('/chat/history', { params: { conversationId } });
@@ -141,5 +141,25 @@ export const clearServerChatHistory = () => api.delete('/user/chat-history');
 export const revokeGmailAccess = () => api.post('/oauth/revoke/gmail');
 
 export const revokeCalendarAccess = () => api.post('/oauth/revoke/calendar');
+
+// ============================================================
+// RAG — Personal Knowledge Base
+// ============================================================
+
+/**
+ * Upload a document (PDF, TXT, MD) to the user's personal RAG pipeline.
+ * formData must have a field called 'file'.
+ */
+export const uploadRagDocument = (formData) =>
+  api.post('/rag/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000, // 2 min — indexing takes time for large docs
+  });
+
+/** List all documents the user has uploaded to their knowledge base. */
+export const getRagDocuments = () => api.get('/rag/documents');
+
+/** Delete a document and all its indexed vector chunks. */
+export const deleteRagDocument = (id) => api.delete(`/rag/documents/${id}`);
 
 export default api;
