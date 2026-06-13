@@ -25,17 +25,32 @@ const getGenAI = () => {
 };
 
 /**
- * Converts text into a 768-dimension vector embedding using Gemini text-embedding-004.
+ * Converts text into a 768-dimension vector embedding using Gemini gemini-embedding-001.
+ * Includes retry with exponential backoff for rate-limit (429) errors.
  */
-const getEmbedding = async (text) => {
-  try {
-    const genAI = getGenAI();
-    const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-    const result = await model.embedContent(text.slice(0, 8000));
-    return result.embedding.values;
-  } catch (error) {
-    console.error('[RAG] Failed to get embedding from Gemini:', error.message);
-    throw error;
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const getEmbedding = async (text, retries = 3) => {
+  const genAI = getGenAI();
+  const model = genAI.getGenerativeModel({ model: 'gemini-embedding-001' });
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const result = await model.embedContent({
+        content: { parts: [{ text: text.slice(0, 8000) }] },
+        outputDimensionality: 768,
+      });
+      return result.embedding.values;
+    } catch (error) {
+      const is429 = error.status === 429 || error.message?.includes('429');
+      if (is429 && attempt < retries) {
+        const wait = Math.pow(2, attempt) * 10000 + Math.random() * 2000; // 10s, 20s, 40s + jitter
+        console.warn(`[RAG] Rate limited, retrying in ${(wait / 1000).toFixed(1)}s (attempt ${attempt + 1}/${retries})`);
+        await sleep(wait);
+        continue;
+      }
+      console.error('[RAG] Failed to get embedding from Gemini:', error.message);
+      throw error;
+    }
   }
 };
 
@@ -201,9 +216,10 @@ const indexPersonalDocument = async (userId, file) => {
     throw new Error('Document has no extractable text content.');
   }
 
-  // Chunk text: 800 chars chunk size, 150 overlap
-  const chunkSize = 800;
-  const overlap = 150;
+  // Chunk text: 2000 chars chunk size, 200 overlap
+  // Larger chunks = fewer API calls = stays under 100 RPM free tier limit
+  const chunkSize = 2000;
+  const overlap = 200;
   const chunks = [];
   let i = 0;
   while (i < text.length) {
@@ -215,6 +231,8 @@ const indexPersonalDocument = async (userId, file) => {
     throw new Error('No text chunks generated.');
   }
 
+  console.log(`[RAG] Chunked "${file.originalname}" into ${chunks.length} chunks.`);
+
   // Create PersonalDocument metadata record first
   const personalDoc = await PersonalDocument.create({
     userId,
@@ -225,19 +243,15 @@ const indexPersonalDocument = async (userId, file) => {
   });
 
   try {
-    // Generate embeddings in batch
-    const genAI = getGenAI();
-    const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-    
-    // Batch embed contents using the array of chunks
-    const result = await model.batchEmbedContents({
-      requests: chunks.map((chunk) => ({
-        content: { parts: [{ text: chunk }] },
-        model: 'models/text-embedding-004',
-      })),
-    });
-
-    const embeddings = result.embeddings.map((e) => e.values);
+    // Generate embeddings sequentially to respect the 100 RPM free tier limit.
+    // Each request is retried with exponential backoff on 429.
+    const embeddings = [];
+    for (let j = 0; j < chunks.length; j++) {
+      const emb = await getEmbedding(chunks[j]);
+      embeddings.push(emb);
+      // Small delay between requests to avoid bursts
+      if (j < chunks.length - 1) await sleep(700);
+    }
 
     // Save vector documents
     const docCreates = chunks.map((chunk, idx) => ({

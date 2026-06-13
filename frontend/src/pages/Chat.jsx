@@ -105,40 +105,63 @@ const KnowledgeBasePanel = ({ onClose }) => {
 
   useEffect(() => { fetchDocs(); }, [fetchDocs]);
 
-  const handleUpload = async (file) => {
-    if (!file) return;
-    const allowed = ['application/pdf', 'text/plain', 'text/markdown'];
-    const isText = /\.(txt|md|markdown)$/i.test(file.name);
-    if (!allowed.includes(file.type) && !isText) {
-      setUploadStatus({ type: 'error', msg: 'Only PDF, TXT, or Markdown files are supported.' });
-      setTimeout(() => setUploadStatus(null), 4000);
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadStatus({ type: 'error', msg: 'File is too large. Max size is 10 MB.' });
+  const handleUploads = async (files) => {
+    if (!files || files.length === 0) return;
+    if (files.length > 10) {
+      setUploadStatus({ type: 'error', msg: 'You can upload a maximum of 10 files at a time.' });
       setTimeout(() => setUploadStatus(null), 4000);
       return;
     }
 
-    setUploadStatus({ type: 'uploading', msg: `Indexing "${file.name}"… this may take a moment.` });
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      await uploadRagDocument(formData);
-      setUploadStatus({ type: 'success', msg: `"${file.name}" indexed successfully!` });
-      await fetchDocs();
-      setTimeout(() => setUploadStatus(null), 3500);
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Upload failed. Please try again.';
-      setUploadStatus({ type: 'error', msg });
-      setTimeout(() => setUploadStatus(null), 5000);
+    const allowed = ['application/pdf', 'text/plain', 'text/markdown'];
+    const validFiles = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const isText = /\.(txt|md|markdown)$/i.test(file.name);
+      if (!allowed.includes(file.type) && !isText) {
+        setUploadStatus({ type: 'error', msg: `Unsupported format for "${file.name}". Only PDF, TXT, or MD are allowed.` });
+        setTimeout(() => setUploadStatus(null), 4000);
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setUploadStatus({ type: 'error', msg: `"${file.name}" is too large. Max size is 10 MB.` });
+        setTimeout(() => setUploadStatus(null), 4000);
+        return;
+      }
+      validFiles.push(file);
     }
+
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      setUploadStatus({
+        type: 'uploading',
+        msg: `Indexing ${i + 1} of ${validFiles.length}: "${file.name}"…`
+      });
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        await uploadRagDocument(formData);
+      } catch (err) {
+        const msg = err.response?.data?.message || `Failed to index "${file.name}".`;
+        setUploadStatus({ type: 'error', msg });
+        await fetchDocs();
+        setTimeout(() => setUploadStatus(null), 5000);
+        return;
+      }
+    }
+
+    setUploadStatus({
+      type: 'success',
+      msg: `Successfully indexed ${validFiles.length} document${validFiles.length > 1 ? 's' : ''}!`
+    });
+    await fetchDocs();
+    setTimeout(() => setUploadStatus(null), 3500);
   };
 
   const handleDrop = (e) => {
     e.preventDefault(); setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleUpload(file);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) handleUploads(files);
   };
 
   const handleDelete = async (id, name) => {
@@ -185,14 +208,15 @@ const KnowledgeBasePanel = ({ onClose }) => {
           onDragOver={e => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
-          onClick={() => !uploadStatus?.type === 'uploading' && fileInputRef.current?.click()}
+          onClick={() => uploadStatus?.type !== 'uploading' && fileInputRef.current?.click()}
         >
           <input
             ref={fileInputRef}
             type="file"
+            multiple
             hidden
             accept=".pdf,.txt,.md,.markdown"
-            onChange={e => { handleUpload(e.target.files[0]); e.target.value = null; }}
+            onChange={e => { handleUploads(Array.from(e.target.files)); e.target.value = null; }}
           />
           <div className="kb-dropzone-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
