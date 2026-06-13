@@ -84,7 +84,7 @@ const formatBytes = (bytes) => {
 /* ══════════════════════════════════════════════════════════════
    Knowledge Base Panel
 ══════════════════════════════════════════════════════════════ */
-const KnowledgeBasePanel = ({ onClose }) => {
+const KnowledgeBasePanel = ({ onClose, onUploadSuccess }) => {
   const [docs, setDocs] = useState([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [uploadStatus, setUploadStatus] = useState(null); // null | { type: 'uploading'|'success'|'error', msg: string }
@@ -141,6 +141,9 @@ const KnowledgeBasePanel = ({ onClose }) => {
       formData.append('file', file);
       try {
         await uploadRagDocument(formData);
+        if (onUploadSuccess) {
+          onUploadSuccess(file.name);
+        }
       } catch (err) {
         const msg = err.response?.data?.message || `Failed to index "${file.name}".`;
         setUploadStatus({ type: 'error', msg });
@@ -332,7 +335,14 @@ const Chat = () => {
   const [connectOpen,  setConnectOpen]  = useState(false);
   const [kbOpen,       setKbOpen]       = useState(false);
 
-  const [selectedModel,       setSelectedModel]       = useState(() => localStorage.getItem('tom_ai_model') || 'gemini-2.5-flash');
+  const [selectedModel,       setSelectedModel]       = useState(() => {
+    const mode = localStorage.getItem('tom_chat_mode') || 'standard';
+    const model = localStorage.getItem('tom_ai_model') || 'gemini-2.5-flash';
+    if (mode === 'personal' && !model.startsWith('gemini-')) {
+      return 'gemini-2.5-flash';
+    }
+    return model;
+  });
   const [showModelDropdown,   setShowModelDropdown]   = useState(false);
   const modelDropdownRef = useRef(null);
 
@@ -349,6 +359,17 @@ const Chat = () => {
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
   const fileInputRef   = useRef(null);
+
+  const onDocumentUploaded = (fileName) => {
+    const statusMsg = {
+      type: 'bot',
+      message: `📄 Document **${fileName}** has been successfully uploaded and indexed in your Knowledge Base. You can now ask questions about it in **Personal** mode!`,
+      timestamp: new Date().toISOString(),
+      id: `b-upload-${Date.now()}-${Math.random()}`
+    };
+    setMessages(prev => [...prev, statusMsg]);
+    addMessage(sessionId, statusMsg);
+  };
 
   useEffect(() => {
     if (theme === 'light') document.body.classList.add('light-mode');
@@ -408,6 +429,10 @@ const Chat = () => {
   const switchMode = (mode) => {
     setChatMode(mode);
     localStorage.setItem('tom_chat_mode', mode);
+    if (mode === 'personal' && !selectedModel.startsWith('gemini-')) {
+      setSelectedModel('gemini-2.5-flash');
+      localStorage.setItem('tom_ai_model', 'gemini-2.5-flash');
+    }
     // Create a fresh session for the chosen mode
     const s = createSession(mode);
     setSessionId(s.id);
@@ -582,7 +607,7 @@ const Chat = () => {
                   <div className="chat-model-dropdown">
                     <div className="chat-model-dropdown-header">Select AI Model</div>
                     <div className="chat-model-dropdown-list">
-                      {MODELS.map(m => (
+                      {(chatMode === 'personal' ? MODELS.filter(m => m.id.startsWith('gemini-')) : MODELS).map(m => (
                         <button
                           key={m.id}
                           className={`chat-model-item ${selectedModel === m.id ? 'active' : ''}`}
@@ -901,7 +926,7 @@ const Chat = () => {
 
       {/* ── Modals ── */}
       {connectOpen && <ConnectModal onClose={() => setConnectOpen(false)} />}
-      {kbOpen && <KnowledgeBasePanel onClose={() => setKbOpen(false)} />}
+      {kbOpen && <KnowledgeBasePanel onClose={() => setKbOpen(false)} onUploadSuccess={onDocumentUploaded} />}
     </div>
   );
 };

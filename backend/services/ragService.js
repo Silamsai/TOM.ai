@@ -222,7 +222,7 @@ const searchPersonalDocuments = async (userId, query, k = 6) => {
   try {
     const queryEmbedding = await getEmbedding(query);
     const docs = await VectorDocument.find({ userId, 'metadata.type': 'personal_doc' }).lean();
-    return performVectorSearch(docs, queryEmbedding, k, 0.30);
+    return performVectorSearch(docs, queryEmbedding, k, 0.0);
   } catch (error) {
     console.error('[RAG] Search personal documents failed:', error.message);
     return [];
