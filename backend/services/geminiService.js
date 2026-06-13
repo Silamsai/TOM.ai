@@ -92,7 +92,7 @@ const callOpenAI = async (model, userMessage, history, systemPrompt) => {
   messages.push({ role: 'user', content: textMsg });
 
   const res = await axios.post('https://api.openai.com/v1/chat/completions', {
-    model: model === 'gpt-4o-mini' ? 'gpt-4o-mini' : 'gpt-4o',
+    model: model || 'gpt-4o',
     messages,
     max_tokens: 2048
   }, {
@@ -125,7 +125,7 @@ const callAnthropic = async (model, userMessage, history, systemPrompt) => {
   messages.push({ role: 'user', content: textMsg });
 
   const res = await axios.post('https://api.anthropic.com/v1/messages', {
-    model: model === 'claude-4.8-opus' ? 'claude-3-opus-20240229' : 'claude-3-5-sonnet-20241022',
+    model: model || 'claude-3-5-sonnet-20241022',
     system: systemPrompt,
     messages,
     max_tokens: 2048
@@ -142,6 +142,41 @@ const callAnthropic = async (model, userMessage, history, systemPrompt) => {
     usage: {
       input: res.data.usage?.input_tokens || 0,
       output: res.data.usage?.output_tokens || 0
+    }
+  };
+};
+
+const callGrok = async (model, userMessage, history, systemPrompt) => {
+  const apiKey = process.env.GROK_API_KEY;
+  const messages = [
+    { role: 'system', content: systemPrompt }
+  ];
+  
+  history.forEach(h => {
+    messages.push({ role: 'user', content: h.userMessage || '' });
+    messages.push({ role: 'assistant', content: h.claudeResponse || '' });
+  });
+
+  const textMsg = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
+  messages.push({ role: 'user', content: textMsg });
+
+  const res = await axios.post('https://api.x.ai/v1/chat/completions', {
+    model: model || 'grok-2',
+    messages,
+    max_tokens: 2048
+  }, {
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const choice = res.data.choices[0];
+  return {
+    response: choice.message.content,
+    usage: {
+      input: res.data.usage?.prompt_tokens || 0,
+      output: res.data.usage?.completion_tokens || 0
     }
   };
 };
@@ -184,14 +219,13 @@ const sendMessage = async (userId, userMessage, user, selectedModel = 'gemini-2.
   }
 
   // Models available for this API key
-  let models = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-  ];
-  if (selectedModel === 'gemini-2.5-pro') {
-    models = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+  let models = [];
+  if (selectedModel && (selectedModel.startsWith('gemini-') || selectedModel === 'gemini-pro')) {
+    models.push(selectedModel);
   }
+  // Standard fallback models
+  if (!models.includes('gemini-2.5-flash')) models.push('gemini-2.5-flash');
+  if (!models.includes('gemini-1.5-flash')) models.push('gemini-1.5-flash');
 
   // Retrieve relevant personal context (RAG)
   const userText = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
@@ -289,6 +323,16 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
       return await callAnthropic(selectedModel, userMessage, rawHistory, systemPrompt);
     } catch (anthropicErr) {
       console.error('[Anthropic] Failed, falling back to Gemini simulation. Error:', anthropicErr.message);
+    }
+  }
+
+  // Call Grok API directly if key is configured
+  if (selectedModel && selectedModel.startsWith('grok-') && process.env.GROK_API_KEY && process.env.GROK_API_KEY !== 'your_grok_api_key_here') {
+    try {
+      console.log(`[Grok] Routing to real Grok API with model: ${selectedModel}`);
+      return await callGrok(selectedModel, userMessage, rawHistory, systemPrompt);
+    } catch (grokErr) {
+      console.error('[Grok] Failed, falling back to Gemini simulation. Error:', grokErr.message);
     }
   }
 

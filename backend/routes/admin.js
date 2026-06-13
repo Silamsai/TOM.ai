@@ -14,6 +14,53 @@ const ADMIN_SECRET   = (process.env.JWT_SECRET || 'secret') + '-admin';
 
 console.log('🔑 [TOM.AI Admin] Credentials Configured:', { username: ADMIN_USERNAME, password: ADMIN_PASSWORD });
 
+// All known providers catalogue — never changes
+const ALL_PROVIDERS = [
+  {
+    id: 'gemini',
+    name: 'Google Gemini',
+    icon: '✨',
+    color: '#38bdf8',
+    models: [
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', shortName: 'Flash 2.5', desc: 'Fast, responsive & multimodal', icon: '⚡' },
+      { id: 'gemini-2.5-pro',   name: 'Gemini 2.5 Pro',   shortName: 'Pro 2.5',   desc: 'Advanced reasoning & complex coding', icon: '🧠' },
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', shortName: 'Flash 1.5', desc: 'Stable & reliable Gemini 1.5', icon: '⚡' },
+      { id: 'gemini-1.5-pro',   name: 'Gemini 1.5 Pro',   shortName: 'Pro 1.5',   desc: 'Gemini 1.5 Pro power', icon: '🧠' },
+    ],
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    icon: '🤖',
+    color: '#10b981',
+    models: [
+      { id: 'gpt-4o',      name: 'GPT-4o',      shortName: 'GPT-4o',      desc: 'OpenAI flagship language & vision model', icon: '🤖' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o mini', shortName: 'GPT-4o mini', desc: 'Fast, lightweight & highly capable',       icon: '🔹' },
+      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', shortName: 'GPT-3.5', desc: 'Quick & cost-efficient',                  icon: '⚡' },
+    ],
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    icon: '✍️',
+    color: '#f59e0b',
+    models: [
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', shortName: 'Sonnet 3.5', desc: 'Anthropic state-of-the-art precision & writing', icon: '✍️' },
+      { id: 'claude-3-haiku-20240307',    name: 'Claude 3 Haiku',   shortName: 'Haiku 3',    desc: 'Fast & cost-efficient Claude',                  icon: '🎍' },
+    ],
+  },
+  {
+    id: 'grok',
+    name: 'xAI Grok',
+    icon: '🌀',
+    color: '#a855f7',
+    models: [
+      { id: 'grok-2',      name: 'Grok 2',      shortName: 'Grok 2',   desc: 'xAI flagship reasoning model', icon: '🌀' },
+      { id: 'grok-2-mini', name: 'Grok 2 Mini', shortName: 'Grok Mini', desc: 'Fast lightweight Grok model',  icon: '⚡' },
+    ],
+  },
+];
+
 const DEFAULT_CONFIG = {
   mcps: [
     { id: 'gmail',    name: 'Gmail',           desc: 'Read emails & draft replies',       icon: '', apiKey: '', connectionString: 'https://gmail.googleapis.com' },
@@ -25,13 +72,9 @@ const DEFAULT_CONFIG = {
   ],
   ai: {
     provider: 'gemini',
-    apiKey: '',
-    model: 'gemini-1.5-flash',
-    providers: [
-      { id: 'gemini',    name: 'Google Gemini',     models: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'] },
-      { id: 'openai',    name: 'OpenAI',            models: ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'] },
-      { id: 'anthropic', name: 'Anthropic Claude',  models: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'] },
-    ]
+    model: 'gemini-2.5-flash',
+    // apiKeys: { providerId: 'actual-key' } — only providers with a key here are active
+    apiKeys: {},
   },
   rag: { enabled: false, source: '', chunkSize: 1000, overlap: 200 },
   profile: { adminName: 'Admin', adminEmail: '', appName: 'TOM.AI' },
@@ -44,16 +87,49 @@ const readConfig = () => {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
       const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+      // Migrate legacy single apiKey to new apiKeys map
+      let aiMerged = { ...DEFAULT_CONFIG.ai, ...raw.ai };
+      if (!aiMerged.apiKeys) aiMerged.apiKeys = {};
+      if (raw.ai && raw.ai.apiKey && !aiMerged.apiKeys[aiMerged.provider]) {
+        aiMerged.apiKeys[aiMerged.provider] = raw.ai.apiKey;
+      }
+      
+      let modified = false;
+      if (raw.ai && raw.ai.hasOwnProperty('apiKey')) {
+        delete aiMerged.apiKey;
+        modified = true;
+      }
+      
+      // Seed from process.env if not configured in JSON yet
+      if (!aiMerged.apiKeys.gemini && process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
+        aiMerged.apiKeys.gemini = process.env.GEMINI_API_KEY;
+        modified = true;
+      }
+      
       configCache = {
         ...DEFAULT_CONFIG, ...raw,
-        ai:      { ...DEFAULT_CONFIG.ai,      ...raw.ai },
+        ai:      aiMerged,
         rag:     { ...DEFAULT_CONFIG.rag,     ...raw.rag },
         profile: { ...DEFAULT_CONFIG.profile, ...raw.profile },
       };
+      
+      if (modified) {
+        writeConfig(configCache);
+      }
       return configCache;
     }
   } catch (e) { console.error('[admin] config read error:', e.message); }
-  configCache = { ...DEFAULT_CONFIG };
+  
+  // If config doesn't exist, build from DEFAULT_CONFIG and seed gemini if available
+  let aiMerged = { ...DEFAULT_CONFIG.ai };
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
+    aiMerged.apiKeys = { gemini: process.env.GEMINI_API_KEY };
+  }
+  configCache = { ...DEFAULT_CONFIG, ai: aiMerged };
+  // Save it immediately so file is created
+  try {
+    writeConfig(configCache);
+  } catch (e) { console.error('[admin] config write error on startup:', e.message); }
   return configCache;
 };
 
@@ -62,15 +138,21 @@ const writeConfig = (cfg) => {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
 };
 
+// Helper to apply all stored API keys to process.env
+const applyApiKeysToEnv = (ai) => {
+  const keys = ai.apiKeys || {};
+  if (keys.gemini)    process.env.GEMINI_API_KEY    = keys.gemini;
+  if (keys.openai)    process.env.OPENAI_API_KEY    = keys.openai;
+  if (keys.anthropic) process.env.ANTHROPIC_API_KEY = keys.anthropic;
+  if (keys.grok)      process.env.GROK_API_KEY       = keys.grok;
+};
+
 // Load config on startup to apply saved API keys to process.env immediately
 try {
   const bootCfg = readConfig();
-  if (bootCfg.ai && bootCfg.ai.apiKey) {
-    if (bootCfg.ai.provider === 'gemini')    process.env.GEMINI_API_KEY    = bootCfg.ai.apiKey;
-    if (bootCfg.ai.provider === 'openai')    process.env.OPENAI_API_KEY    = bootCfg.ai.apiKey;
-    if (bootCfg.ai.provider === 'anthropic') process.env.ANTHROPIC_API_KEY = bootCfg.ai.apiKey;
-    console.log(`🔑 [TOM.AI Admin] Loaded AI API key for provider: ${bootCfg.ai.provider} from config.`);
-  }
+  applyApiKeysToEnv(bootCfg.ai);
+  const keyCount = Object.keys(bootCfg.ai.apiKeys || {}).length;
+  console.log(`🔑 [TOM.AI Admin] Loaded ${keyCount} AI provider key(s) from config.`);
 } catch (bootErr) {
   console.error('⚠️ [TOM.AI Admin] Failed to boot-load API keys:', bootErr.message);
 }
@@ -110,6 +192,23 @@ router.get('/mcps-public', (_req, res) => {
   const cfg = readConfig();
   const safe = (cfg.mcps || []).map(({ id, name, desc, icon }) => ({ id, name, desc, icon }));
   res.json({ success: true, data: safe });
+});
+
+// GET /api/admin/ai-models-public — returns only providers that have a configured API key
+// Used by the Chat page to populate the model dropdown dynamically
+router.get('/ai-models-public', (_req, res) => {
+  const cfg = readConfig();
+  const keys = cfg.ai.apiKeys || {};
+  // Only return providers that have an API key set
+  const available = ALL_PROVIDERS
+    .filter(p => !!keys[p.id])
+    .map(p => ({ id: p.id, name: p.name, icon: p.icon, color: p.color, models: p.models }));
+  res.json({ success: true, data: available, activeProvider: cfg.ai.provider, activeModel: cfg.ai.model });
+});
+
+// GET /api/admin/ai-providers-catalogue — full catalogue for admin UI (no auth needed for list)
+router.get('/ai-providers-catalogue', (_req, res) => {
+  res.json({ success: true, data: ALL_PROVIDERS });
 });
 
 /* ── Protected endpoints ─────────────────────────────────────── */
@@ -165,21 +264,60 @@ router.delete('/mcps/:id', (req, res) => {
 /* ── AI ───────────────────────────── */
 router.get('/ai', (_req, res) => {
   const cfg = readConfig();
-  res.json({ success: true, data: { ...cfg.ai, apiKey: mask(cfg.ai.apiKey) } });
+  // Mask all stored keys before sending to client
+  const maskedKeys = {};
+  Object.entries(cfg.ai.apiKeys || {}).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
+  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: ALL_PROVIDERS } });
 });
 
+// PUT /api/admin/ai — update active provider/model
 router.put('/ai', (req, res) => {
   const cfg = readConfig();
-  const upd = { ...req.body };
-  if (upd.apiKey && upd.apiKey.includes('•')) delete upd.apiKey;
-  cfg.ai = { ...cfg.ai, ...upd };
+  const { provider, model } = req.body || {};
+  if (provider) cfg.ai.provider = provider;
+  if (model)    cfg.ai.model    = model;
   writeConfig(cfg);
-  if (cfg.ai.apiKey) {
-    if (cfg.ai.provider === 'gemini')    process.env.GEMINI_API_KEY    = cfg.ai.apiKey;
-    if (cfg.ai.provider === 'openai')    process.env.OPENAI_API_KEY    = cfg.ai.apiKey;
-    if (cfg.ai.provider === 'anthropic') process.env.ANTHROPIC_API_KEY = cfg.ai.apiKey;
+  const maskedKeys = {};
+  Object.entries(cfg.ai.apiKeys || {}).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
+  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: ALL_PROVIDERS } });
+});
+
+// POST /api/admin/ai/keys — add or update a provider API key
+router.post('/ai/keys', (req, res) => {
+  const { providerId, apiKey, model } = req.body || {};
+  if (!providerId) return res.status(400).json({ success: false, message: 'providerId is required' });
+  if (!apiKey || apiKey.includes('•')) return res.status(400).json({ success: false, message: 'A valid API key is required' });
+  const provider = ALL_PROVIDERS.find(p => p.id === providerId);
+  if (!provider) return res.status(400).json({ success: false, message: 'Unknown provider' });
+  const cfg = readConfig();
+  if (!cfg.ai.apiKeys) cfg.ai.apiKeys = {};
+  cfg.ai.apiKeys[providerId] = apiKey;
+  // If a default model is provided, use it; otherwise use the first model of the provider
+  if (model) cfg.ai.model = model;
+  if (!cfg.ai.model && provider.models.length) cfg.ai.model = provider.models[0].id;
+  writeConfig(cfg);
+  applyApiKeysToEnv(cfg.ai);
+  const maskedKeys = {};
+  Object.entries(cfg.ai.apiKeys).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
+  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: ALL_PROVIDERS } });
+});
+
+// DELETE /api/admin/ai/keys/:providerId — remove a provider API key
+router.delete('/ai/keys/:providerId', (req, res) => {
+  const { providerId } = req.params;
+  const cfg = readConfig();
+  if (cfg.ai.apiKeys) delete cfg.ai.apiKeys[providerId];
+  // If the active provider was removed, fall back to the first provider that still has a key
+  if (cfg.ai.provider === providerId) {
+    const remaining = Object.keys(cfg.ai.apiKeys || {});
+    cfg.ai.provider = remaining[0] || 'gemini';
+    const fallbackProvider = ALL_PROVIDERS.find(p => p.id === cfg.ai.provider);
+    cfg.ai.model = fallbackProvider?.models[0]?.id || 'gemini-2.5-flash';
   }
-  res.json({ success: true, data: { ...cfg.ai, apiKey: mask(cfg.ai.apiKey) } });
+  writeConfig(cfg);
+  const maskedKeys = {};
+  Object.entries(cfg.ai.apiKeys || {}).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
+  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: ALL_PROVIDERS } });
 });
 
 /* ── RAG ──────────────────────────── */

@@ -166,45 +166,149 @@ function MCPsTab({ toast }) {
 
 /* ══ AI Tab ══════════════════════════════════════════════════════════ */
 function AITab({ toast }) {
-  const [ai, setAi] = useState({ provider:'gemini', apiKey:'', model:'', providers:[] });
-  const [key, setKey] = useState('');
+  const [ai, setAi] = useState({ provider:'gemini', model:'', apiKeys:{}, allProviders:[] });
+  const [modal, setModal] = useState(null); // null | 'add' | provider obj for edit
+  const [formProvider, setFormProvider] = useState('');
+  const [formKey, setFormKey] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const load = () => fetch(`${API}/ai`, { headers: authHdr() }).then(r=>r.json()).then(d=>{ if(d.success){ setAi(d.data); setKey(''); } });
+  const load = () => fetch(`${API}/ai`, { headers: authHdr() }).then(r=>r.json()).then(d=>{
+    if(d.success) setAi(d.data);
+  });
   useEffect(() => { load(); }, []);
 
-  const save = async () => {
-    setBusy(true);
-    const body = { provider: ai.provider, model: ai.model };
-    if (key && !key.includes('•')) body.apiKey = key;
-    await fetch(`${API}/ai`, { method:'PUT', headers: authHdr(), body: JSON.stringify(body) });
-    toast('AI settings saved', 'success'); load(); setBusy(false);
+  const configuredProviders = (ai.allProviders||[]).filter(p => !!(ai.apiKeys||{})[p.id]);
+  const unconfiguredProviders = (ai.allProviders||[]).filter(p => !(ai.apiKeys||{})[p.id]);
+
+  const openAdd = () => {
+    setFormProvider(unconfiguredProviders[0]?.id || '');
+    setFormKey('');
+    setModal('add');
   };
 
-  const current = (ai.providers||[]).find(p=>p.id===ai.provider)||{};
+  const openEdit = (providerId) => {
+    setFormProvider(providerId);
+    setFormKey('');
+    setModal('edit');
+  };
+
+  const saveKey = async () => {
+    if (!formProvider || !formKey) { toast('Please select a provider and enter an API key', 'error'); return; }
+    setBusy(true);
+    try {
+      const provider = (ai.allProviders||[]).find(p => p.id === formProvider);
+      const defaultModel = provider?.models?.[0]?.id || '';
+      await fetch(`${API}/ai/keys`, { method:'POST', headers: authHdr(), body: JSON.stringify({ providerId: formProvider, apiKey: formKey, model: defaultModel }) });
+      toast(`API key saved for ${provider?.name || formProvider}`, 'success');
+      setModal(null); setFormKey(''); setFormProvider('');
+      await load();
+    } catch { toast('Failed to save API key', 'error'); }
+    setBusy(false);
+  };
+
+  const deleteKey = async (providerId) => {
+    const provider = (ai.allProviders||[]).find(p => p.id === providerId);
+    if (!window.confirm(`Remove API key for ${provider?.name || providerId}? This provider's models will no longer appear in the chat.`)) return;
+    setBusy(true);
+    await fetch(`${API}/ai/keys/${providerId}`, { method:'DELETE', headers: authHdr() });
+    toast(`API key removed for ${provider?.name || providerId}`, 'success');
+    await load();
+    setBusy(false);
+  };
+
+  const setActive = async (providerId) => {
+    const provider = (ai.allProviders||[]).find(p => p.id === providerId);
+    const defaultModel = provider?.models?.[0]?.id || '';
+    setBusy(true);
+    await fetch(`${API}/ai`, { method:'PUT', headers: authHdr(), body: JSON.stringify({ provider: providerId, model: defaultModel }) });
+    toast(`Active provider set to ${provider?.name || providerId}`, 'success');
+    await load();
+    setBusy(false);
+  };
+
   return (
     <div>
-      <div className="adm-section-title">AI Configuration</div>
-      <div className="adm-section-sub">Select AI provider, model, and set API keys</div>
-      <div className="adm-ai-status"><div className="adm-ai-status-dot"/><span>Active: <strong>{current.name||ai.provider}</strong> · {ai.model}</span></div>
-      <div className="adm-card">
-        <div className="adm-field"><label className="adm-label">Provider</label>
-          <div className="adm-providers">
-            {(ai.providers||[]).map(p=>(
-              <button key={p.id} className={`adm-provider-chip ${ai.provider===p.id?'selected':''}`} onClick={()=>setAi(a=>({...a,provider:p.id,model:(p.models||[])[0]||a.model}))}>{p.name}</button>
-            ))}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+        <div>
+          <div className="adm-section-title">AI Configuration</div>
+          <div className="adm-section-sub">Manage API keys for AI providers. Only providers with keys appear in chat.</div>
+        </div>
+        <button className="adm-btn adm-btn-primary" onClick={openAdd} disabled={unconfiguredProviders.length === 0}>+ Add New API Key</button>
+      </div>
+
+      {configuredProviders.length === 0 && (
+        <div className="adm-card" style={{textAlign:'center',padding:'40px 20px',color:'var(--adm-dim)'}}>
+          <div style={{fontSize:40,marginBottom:12}}>🔑</div>
+          <div style={{fontSize:14,marginBottom:8}}>No API keys configured yet</div>
+          <div style={{fontSize:12}}>Click "Add New API Key" to get started. Add your Google Gemini API key first.</div>
+        </div>
+      )}
+
+      <div className="adm-mcp-grid">
+        {configuredProviders.map(p => (
+          <div className={`adm-mcp-card ${ai.provider === p.id ? 'adm-ai-active-card' : ''}`} key={p.id}>
+            <div className="adm-mcp-icon-wrap" style={{fontSize:28}}>{p.icon}</div>
+            <div className="adm-mcp-info">
+              <div className="adm-mcp-name" style={{display:'flex',alignItems:'center',gap:8}}>
+                {p.name}
+                {ai.provider === p.id && <span className="adm-ai-active-badge">ACTIVE</span>}
+              </div>
+              <div className="adm-mcp-desc" style={{fontSize:11,color:'var(--adm-dim)'}}>
+                Key: {(ai.apiKeys||{})[p.id] || '••••••••'}
+              </div>
+              <div className="adm-mcp-desc" style={{fontSize:11,marginTop:4}}>
+                Models: {(p.models||[]).map(m => m.shortName || m.name).join(', ')}
+              </div>
+              <div className="adm-mcp-actions" style={{marginTop:8}}>
+                {ai.provider !== p.id && (
+                  <button className="adm-btn adm-btn-primary adm-btn-sm" onClick={()=>setActive(p.id)}>Set Active</button>
+                )}
+                <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={()=>openEdit(p.id)}>Update Key</button>
+                <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={()=>deleteKey(p.id)}>Remove</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Add / Edit API Key Modal */}
+      {modal && (
+        <div className="adm-overlay" onClick={()=>setModal(null)}>
+          <div className="adm-modal" onClick={e=>e.stopPropagation()}>
+            <div className="adm-modal-header">
+              <div className="adm-modal-title">{modal==='add'?'Add New API Key':'Update API Key'}</div>
+              <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={()=>setModal(null)}>✕</button>
+            </div>
+            <div className="adm-modal-body">
+              <div className="adm-field">
+                <label className="adm-label">Provider</label>
+                {modal === 'add' ? (
+                  <select className="adm-select" value={formProvider} onChange={e=>setFormProvider(e.target.value)}>
+                    {unconfiguredProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                ) : (
+                  <input className="adm-input" value={(ai.allProviders||[]).find(p=>p.id===formProvider)?.name || formProvider} disabled />
+                )}
+              </div>
+              {formProvider && (
+                <div className="adm-field">
+                  <label className="adm-label" style={{fontSize:11,color:'var(--adm-dim)'}}>
+                    Available models: {((ai.allProviders||[]).find(p=>p.id===formProvider)?.models||[]).map(m=>m.name).join(', ')}
+                  </label>
+                </div>
+              )}
+              <div className="adm-field">
+                <label className="adm-label">API Key *</label>
+                <input className="adm-input" type="password" value={formKey} onChange={e=>setFormKey(e.target.value)} placeholder="Paste your API key here…" />
+              </div>
+              <div className="adm-modal-actions">
+                <button className="adm-btn adm-btn-secondary" onClick={()=>setModal(null)}>Cancel</button>
+                <button className="adm-btn adm-btn-primary" onClick={saveKey} disabled={busy||!formProvider||!formKey}>{busy?'Saving…':'Save API Key'}</button>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="adm-field"><label className="adm-label">Model</label>
-          <select className="adm-select" value={ai.model} onChange={e=>setAi(a=>({...a,model:e.target.value}))}>
-            {(current.models||[ai.model]).map(m=><option key={m} value={m}>{m}</option>)}
-          </select>
-        </div>
-        <div className="adm-field"><label className="adm-label">API Key</label>
-          <input className="adm-input" type="password" value={key||ai.apiKey} onChange={e=>setKey(e.target.value)} placeholder="Enter new API key to replace…" />
-        </div>
-        <button className="adm-btn adm-btn-primary" onClick={save} disabled={busy}>{busy?'Saving…':'Save Changes'}</button>
-      </div>
+      )}
     </div>
   );
 }
@@ -278,12 +382,12 @@ function ProfileTab({ toast }) {
 
 /* ══ Dashboard ═══════════════════════════════════════════════════════ */
 function DashboardTab() {
-  const [stats, setStats] = useState({ mcps:0, ai:'', model:'' });
+  const [stats, setStats] = useState({ mcps:0, ai:'', model:'', aiKeys:0 });
   useEffect(() => {
     Promise.all([
       fetch(`${API}/mcps`,{headers:authHdr()}).then(r=>r.json()),
       fetch(`${API}/ai`,{headers:authHdr()}).then(r=>r.json()),
-    ]).then(([m,a]) => setStats({ mcps: m.data?.length||0, ai: a.data?.provider||'', model: a.data?.model||'' }));
+    ]).then(([m,a]) => setStats({ mcps: m.data?.length||0, ai: a.data?.provider||'', model: a.data?.model||'', aiKeys: Object.keys(a.data?.apiKeys||{}).length }));
   }, []);
   return (
     <div>
@@ -291,6 +395,7 @@ function DashboardTab() {
       <div className="adm-section-sub">Overview of your TOM.AI admin panel</div>
       <div className="adm-stats">
         <div className="adm-stat-card"><div className="adm-stat-num">{stats.mcps}</div><div className="adm-stat-label">MCP Integrations</div></div>
+        <div className="adm-stat-card"><div className="adm-stat-num">{stats.aiKeys}</div><div className="adm-stat-label">AI Keys Configured</div></div>
         <div className="adm-stat-card"><div className="adm-stat-num" style={{fontSize:18,paddingTop:4}}>{stats.ai||'—'}</div><div className="adm-stat-label">Active AI Provider</div></div>
         <div className="adm-stat-card"><div className="adm-stat-num" style={{fontSize:14,paddingTop:8}}>{stats.model||'—'}</div><div className="adm-stat-label">Active Model</div></div>
       </div>

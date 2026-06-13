@@ -294,6 +294,17 @@ textarea.adm-input { resize:vertical; min-height:80px; }
 /* ── Error msg ── */
 .adm-error { color:#f87171; font-size:13px; padding:8px 12px; background:rgba(239,68,68,.1); border-radius:7px; margin-top:10px; }
 
+/* ── AI Active Badge ── */
+.adm-ai-active-badge {
+  font-size: 9px; font-weight: 700; letter-spacing: .5px;
+  color: #000; background: var(--adm-green);
+  padding: 2px 7px; border-radius: 4px;
+}
+.adm-ai-active-card {
+  border: 1px solid var(--adm-green) !important;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.15);
+}
+
 /* ── Responsive ── */
 @media (max-width:700px) {
   .adm-sidebar { display:none; }

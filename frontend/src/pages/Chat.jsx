@@ -55,15 +55,13 @@ const SUGGESTIONS = [
   { icon: '😄', text: 'Tell me a joke' },
 ];
 
-const MODELS = [
+/* Fallback model if backend returns nothing */
+const DEFAULT_MODELS = [
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', shortName: 'Flash 2.5', desc: 'Fast, responsive & multimodal', color: '#38bdf8', icon: '⚡' },
-  { id: 'gemini-2.5-pro',   name: 'Gemini 2.5 Pro',   shortName: 'Pro 2.5',   desc: 'Advanced reasoning & complex coding', color: '#818cf8', icon: '🧠' },
-  { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', shortName: 'Gemini 3.5', desc: 'Cutting-edge simulated speed & intelligence', color: '#a855f7', icon: '✨' },
-  { id: 'gpt-4o',           name: 'GPT-4o',           shortName: 'GPT-4o',    desc: 'OpenAI flagship language & vision model', color: '#10b981', icon: '🤖' },
-  { id: 'gpt-4o-mini',      name: 'GPT-4o mini',      shortName: 'GPT-4o mini', desc: 'Fast, lightweight & highly capable', color: '#34d399', icon: '🔹' },
-  { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', shortName: 'Sonnet 3.5', desc: 'Anthropic state-of-the-art precision & writing', color: '#f59e0b', icon: '✍️' },
-  { id: 'claude-4.8-opus',  name: 'Claude 4.8 Opus',  shortName: 'Claude Opus 4.8', desc: 'Simulated masterful deep reasoning & creativity', color: '#f97316', icon: '🎭' },
 ];
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const ADMIN_API = `${API_BASE_URL}/admin`;
 
 /* ── File type icon/class helper ── */
 const getDocIcon = (fileName = '') => {
@@ -335,6 +333,28 @@ const Chat = () => {
   const [connectOpen,  setConnectOpen]  = useState(false);
   const [kbOpen,       setKbOpen]       = useState(false);
 
+  /* ── Dynamic model list from admin config ── */
+  const [availableModels, setAvailableModels] = useState(DEFAULT_MODELS);
+
+  useEffect(() => {
+    fetch(`${ADMIN_API}/ai-models-public`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.data && d.data.length > 0) {
+          // Flatten providers → flat model list with color from provider
+          const models = d.data.flatMap(provider =>
+            (provider.models || []).map(m => ({
+              ...m,
+              color: provider.color || '#38bdf8',
+              providerName: provider.name,
+            }))
+          );
+          if (models.length > 0) setAvailableModels(models);
+        }
+      })
+      .catch(() => { /* keep defaults */ });
+  }, []);
+
   const [selectedModel,       setSelectedModel]       = useState(() => {
     const mode = localStorage.getItem('tom_chat_mode') || 'standard';
     const model = localStorage.getItem('tom_ai_model') || 'gemini-2.5-flash';
@@ -355,6 +375,15 @@ const Chat = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  /* If selected model is not in available models, switch to first available */
+  useEffect(() => {
+    if (availableModels.length > 0 && !availableModels.find(m => m.id === selectedModel)) {
+      const fallback = availableModels[0].id;
+      setSelectedModel(fallback);
+      localStorage.setItem('tom_ai_model', fallback);
+    }
+  }, [availableModels, selectedModel]);
 
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
@@ -517,7 +546,7 @@ const Chat = () => {
 
   /* ── Shared input bar ── */
   const renderInputBar = () => {
-    const currentModelObj = MODELS.find(m => m.id === selectedModel) || MODELS[0];
+    const currentModelObj = availableModels.find(m => m.id === selectedModel) || availableModels[0] || DEFAULT_MODELS[0];
 
     return (
       <div className="chat-input-area-v2">
@@ -608,7 +637,7 @@ const Chat = () => {
                     <div className="chat-model-dropdown">
                       <div className="chat-model-dropdown-header">Select AI Model</div>
                       <div className="chat-model-dropdown-list">
-                        {MODELS.map(m => (
+                        {availableModels.map(m => (
                           <button
                             key={m.id}
                             className={`chat-model-item ${selectedModel === m.id ? 'active' : ''}`}
@@ -623,8 +652,8 @@ const Chat = () => {
                             <div className="chat-model-item-body">
                               <div className="chat-model-item-name">
                                 {m.name}
-                                {['gemini-3.5-flash', 'claude-4.8-opus'].includes(m.id) ? (
-                                  <span className="chat-model-sim-badge">SIMULATED</span>
+                                {m.providerName ? (
+                                  <span className="chat-model-sim-badge" style={{background:'rgba(124,108,252,0.2)',color:'#a78bfa'}}>{m.providerName}</span>
                                 ) : null}
                               </div>
                               <div className="chat-model-item-desc">{m.desc}</div>
