@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { ConnectModal } from '../components/ChatSidebar';
@@ -48,6 +48,20 @@ const Settings = () => {
   const guest = getGuestProfile();
   const initials = ((user?.name || guest?.name || 'G')
     .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2));
+
+  /* ── Profile dropdown ── */
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const profileDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleProfileClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setShowProfileDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleProfileClickOutside);
+    return () => document.removeEventListener('mousedown', handleProfileClickOutside);
+  }, []);
 
   // Layout state
   const [connectOpen, setConnectOpen] = useState(false);
@@ -514,11 +528,32 @@ const Settings = () => {
             <span>Connect</span>
           </button>
 
-          <div className="chat-user-avatar" title={user?.name || guest?.name || 'Guest'}>
-            {user?.picture ? (
-              <img src={user.picture} alt={user.name} width="32" height="32" style={{ borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              <span>{initials}</span>
+          {/* User avatar with profile dropdown */}
+          <div className="chat-profile-wrapper" ref={profileDropdownRef}>
+            <div className="chat-user-avatar" title={user?.name || guest?.name || 'Guest'} onClick={() => setShowProfileDropdown(v => !v)} style={{ cursor: 'pointer' }}>
+              {user?.picture ? (
+                <img src={user.picture} alt={user.name} width="32" height="32" style={{ borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+
+            {showProfileDropdown && (
+              <div className="chat-profile-dropdown">
+                <div className="chat-profile-dropdown-header">
+                  <div className="chat-profile-dropdown-name">{user?.name || guest?.name || 'Guest'}</div>
+                  <div className="chat-profile-dropdown-email">{user?.email || ''}</div>
+                </div>
+                <div className="chat-profile-dropdown-divider" />
+                <button className="chat-profile-dropdown-item" onClick={() => { setShowProfileDropdown(false); navigate('/settings'); }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  Account Settings
+                </button>
+                <button className="chat-profile-dropdown-item chat-profile-dropdown-logout" onClick={handleLogout}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  Logout
+                </button>
+              </div>
             )}
           </div>
         </div>

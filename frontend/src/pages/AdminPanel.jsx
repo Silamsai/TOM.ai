@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../styles/admin.css';
 
-const API = 'http://localhost:5000/api/admin';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API = `${API_BASE_URL}/admin`;
 const getToken = () => localStorage.getItem('tom_admin_token');
 const authHdr  = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 

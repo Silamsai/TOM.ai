@@ -240,4 +240,61 @@ const sendTaskReminderEmail = async (email, task) => {
   });
 };
 
-module.exports = { sendOTPEmail, sendPasswordResetEmail, sendConfirmationEmail, sendTaskReminderEmail };
+const sendTaskCreatedEmail = async (email, task) => {
+  const html = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body { font-family: Arial, sans-serif; background: #0f0f1a; margin: 0; padding: 20px; }
+      .container { max-width: 520px; margin: auto; background: #1a1a2e; border-radius: 12px; overflow: hidden; }
+      .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 32px; text-align: center; }
+      .header h1 { color: #fff; margin: 0; font-size: 28px; }
+      .body { padding: 32px; color: #d1d5db; line-height: 1.7; }
+      .task-box { background: #0f0f1a; border: 2px solid #6366f1; border-radius: 10px; padding: 20px; margin: 24px 0; }
+      .task-title { font-size: 20px; font-weight: bold; color: #a78bfa; margin-bottom: 8px; }
+      .task-desc { font-size: 14px; color: #9ca3af; margin-bottom: 12px; }
+      .task-meta { font-size: 12px; color: #6b7280; display: flex; flex-direction: column; gap: 4px; }
+      .task-meta span { display: block; }
+      .footer { padding: 20px 32px; text-align: center; font-size: 12px; color: #4b5563; border-top: 1px solid #2d2d4a; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header"><h1>📝 Task Created</h1></div>
+      <div class="body">
+        <h2 style="color:#e5e7eb;">New Task Added via TOM.AI</h2>
+        <p>A new task has been successfully created in your task manager through your AI assistant conversation.</p>
+        <div class="task-box">
+          <div class="task-title">${task.taskName}</div>
+          ${task.description ? `<div class="task-desc">${task.description}</div>` : ''}
+          <div class="task-meta">
+            ${task.dueDate ? `<span><strong>Due Date:</strong> ${new Date(task.dueDate).toLocaleDateString()}</span>` : ''}
+            ${task.reminderTime ? `<span><strong>Reminder:</strong> ${task.reminderTime}</span>` : ''}
+            <span><strong>Priority:</strong> ${task.priority.toUpperCase()}</span>
+          </div>
+        </div>
+        <p>You can view, edit, or complete this task in your Task Manager.</p>
+      </div>
+      <div class="footer">© ${new Date().getFullYear()} TOM.AI</div>
+    </div>
+  </body>
+  </html>`;
+
+  await sendMail({
+    from: `"TOM.AI" <${process.env.GMAIL_USER || 'noreply@tomai.com'}>`,
+    to: email,
+    subject: `📝 Task Created: ${task.taskName}`,
+    html,
+  });
+};
+
+module.exports = { 
+  sendOTPEmail, 
+  sendPasswordResetEmail, 
+  sendConfirmationEmail, 
+  sendTaskReminderEmail,
+  sendTaskCreatedEmail
+};
+

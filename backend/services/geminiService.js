@@ -11,6 +11,9 @@ const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio
 const path = require('path');
 const axios = require('axios');
 const ChatHistory = require('../models/ChatHistory');
+const Task = require('../models/Task');
+const User = require('../models/User');
+const emailService = require('./emailService');
 const { buildRAGContext, searchPersonalDocuments } = require('./ragService');
 
 // ---- MCP Setup ----------------------------------------------------
@@ -181,6 +184,67 @@ const callGrok = async (model, userMessage, history, systemPrompt) => {
   };
 };
 
+const processTaskCreation = async (userId, responseText, user) => {
+  const match = responseText.match(/<create_task>([\s\S]*?)<\/create_task>/);
+  if (!match) return { cleanText: responseText };
+
+  let cleanText = responseText.replace(/<create_task>[\s\S]*?<\/create_task>/g, '').trim();
+  const jsonStr = match[1].trim();
+  
+  try {
+    const data = JSON.parse(jsonStr);
+    if (!data.taskName) {
+      return { cleanText: cleanText + "\n\n*(Failed to create task: Task name is required.)*" };
+    }
+
+    const { indexTask } = require('./ragService');
+
+    // Find the user's email
+    let userEmail = user?.email;
+    if (!userEmail) {
+      const userDoc = await User.findById(userId);
+      userEmail = userDoc?.email;
+    }
+
+    const task = await Task.create({
+      userId,
+      taskName: data.taskName.trim(),
+      description: data.description?.trim() || '',
+      dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+      reminderTime: data.reminderTime || undefined,
+      reminderSet: !!data.reminderTime,
+      priority: data.priority || 'medium',
+      tags: data.tags || []
+    });
+
+    // Index task in RAG
+    try {
+      await indexTask(userId, task);
+    } catch (ragErr) {
+      console.error('[RAG] Index task error during AI creation:', ragErr.message);
+    }
+
+    // Send email alert
+    let emailStatus = "";
+    if (userEmail && emailService.sendTaskCreatedEmail) {
+      try {
+        await emailService.sendTaskCreatedEmail(userEmail, task);
+        emailStatus = "An alert email has been sent to you.";
+      } catch (mailErr) {
+        console.error('[Email] Failed to send task created email:', mailErr.message);
+        emailStatus = "Could not send the email alert.";
+      }
+    }
+
+    const formattedDate = task.dueDate ? ` (Due: ${new Date(task.dueDate).toLocaleDateString()})` : '';
+    const confirmation = `\n\nTask created: **${task.taskName}**${formattedDate} with **${task.priority}** priority. ${emailStatus}`;
+    return { cleanText: cleanText + confirmation };
+  } catch (err) {
+    console.error('[Task Creation] Failed to parse JSON or save task:', err.message);
+    return { cleanText: cleanText + "\n\n*(Failed to create task: Invalid details format.)*" };
+  }
+};
+
 /**
  * Sends a user message to Gemini and returns the AI response.
  * Drop-in replacement for claudeService.sendMessage()
@@ -269,8 +333,32 @@ const sendMessage = async (userId, userMessage, user, selectedModel = 'gemini-2.
     simulationGuideline = `\n- **AI Assistant Model (Claude 4.8 Opus - Simulated)**: Emulate a masterful, extremely deep-thinking, creative, and empathetic assistant that excels in philosophy, coding, math, and long-form narrative. Write detailed, rich, and deeply explained responses with warmth.`;
   }
 
+  const taskInstructions = `
+- **Task Creation Capability**:
+  * You can create tasks for the user. If the user asks to "create a task", "add a task", "remind me to...", etc., you must ask for details if they aren't provided.
+  * The required/optional details for a task are:
+    1. Task Name (string, required)
+    2. Description (string, optional)
+    3. Due Date (date string in format YYYY-MM-DD or YYYY-MM-DD HH:MM, optional)
+    4. Reminder Time (time string in format HH:MM in 24-hour clock, optional)
+    5. Priority (string: "low", "medium", or "high", optional, default is "medium")
+    6. Tags (array of strings, optional)
+  * Once you have the task details (at least the task name), you MUST execute the task creation by appending this EXACT XML tag at the very end of your response:
+    <create_task>
+    {
+      "taskName": "Task Name Here",
+      "description": "Optional description",
+      "dueDate": "YYYY-MM-DD (or omit if none)",
+      "reminderTime": "HH:MM (or omit if none)",
+      "priority": "low/medium/high",
+      "tags": ["tag1", "tag2"]
+    }
+    </create_task>
+  * Make sure the JSON inside the XML tag is valid JSON.
+  * If the user doesn't specify details, ask them nicely: "To create the task, please tell me: 1. Task Name, 2. Due Date, 3. Priority, 4. Reminder (optional)."`;
+
   const systemPrompt = mode === 'personal'
-    ? `You are TOM.AI Personal, an advanced Retrieval-Augmented Generation (RAG) AI assistant for ${user?.name || 'the user'}.${simulationGuideline}
+    ? `You are TOM.AI Personal, an advanced Retrieval-Augmented Generation (RAG) AI assistant for ${user?.name || 'the user'}.${simulationGuideline}${taskInstructions}
 
 Your primary and sole task is to answer the user's questions based exclusively on the provided retrieved context from their uploaded personal documents.
 
@@ -282,7 +370,7 @@ Strict Guidelines:
 
 Current user: ${user?.name || 'User'} (${user?.email || ''})
 Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST${ragContext}`
-    : `You are TOM.AI, a smart, friendly, empathetic, and highly capable personal AI assistant for ${user?.name || 'the user'}.${simulationGuideline}
+    : `You are TOM.AI, a smart, friendly, empathetic, and highly capable personal AI assistant for ${user?.name || 'the user'}.${simulationGuideline}${taskInstructions}
 
 You help with anything: general knowledge, science, history, math, coding, writing, task planning, and everyday questions.
 You ALSO have access to the user's Gmail via tools. If the user asks to read, search, or check their emails, USE THE TOOLS PROVIDED.
@@ -310,7 +398,10 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
   if (selectedModel && selectedModel.startsWith('gpt-') && process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here') {
     try {
       console.log(`[OpenAI] Routing to real OpenAI API with model: ${selectedModel}`);
-      return await callOpenAI(selectedModel, userMessage, rawHistory, systemPrompt);
+      const res = await callOpenAI(selectedModel, userMessage, rawHistory, systemPrompt);
+      const processed = await processTaskCreation(userId, res.response, user);
+      res.response = processed.cleanText;
+      return res;
     } catch (openaiErr) {
       console.error('[OpenAI] Failed, falling back to Gemini simulation. Error:', openaiErr.message);
     }
@@ -320,7 +411,10 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
   if (selectedModel && selectedModel.startsWith('claude-') && process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here') {
     try {
       console.log(`[Anthropic] Routing to real Anthropic API with model: ${selectedModel}`);
-      return await callAnthropic(selectedModel, userMessage, rawHistory, systemPrompt);
+      const res = await callAnthropic(selectedModel, userMessage, rawHistory, systemPrompt);
+      const processed = await processTaskCreation(userId, res.response, user);
+      res.response = processed.cleanText;
+      return res;
     } catch (anthropicErr) {
       console.error('[Anthropic] Failed, falling back to Gemini simulation. Error:', anthropicErr.message);
     }
@@ -330,7 +424,10 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
   if (selectedModel && selectedModel.startsWith('grok-') && process.env.GROK_API_KEY && process.env.GROK_API_KEY !== 'your_grok_api_key_here') {
     try {
       console.log(`[Grok] Routing to real Grok API with model: ${selectedModel}`);
-      return await callGrok(selectedModel, userMessage, rawHistory, systemPrompt);
+      const res = await callGrok(selectedModel, userMessage, rawHistory, systemPrompt);
+      const processed = await processTaskCreation(userId, res.response, user);
+      res.response = processed.cleanText;
+      return res;
     } catch (grokErr) {
       console.error('[Grok] Failed, falling back to Gemini simulation. Error:', grokErr.message);
     }
@@ -436,6 +533,9 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
         if (!text || text.trim() === '') {
           text = "I checked your request but didn't have a verbal response. (Action completed)";
         }
+
+        const processed = await processTaskCreation(userId, text, user);
+        text = processed.cleanText;
 
         const usage = result.response.usageMetadata || {};
 
