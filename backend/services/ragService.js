@@ -164,7 +164,7 @@ const searchDocuments = async (userId, query, k = 4) => {
   try {
     const queryEmbedding = await getEmbedding(query);
     const docs = await VectorDocument.find({ userId }).lean();
-    return performVectorSearch(docs, queryEmbedding, k, 0.65);
+    return performVectorSearch(docs, queryEmbedding, k, 0.30);
   } catch (error) {
     console.error('[RAG] Search documents failed:', error.message);
     return [];
@@ -222,7 +222,7 @@ const searchPersonalDocuments = async (userId, query, k = 6) => {
   try {
     const queryEmbedding = await getEmbedding(query);
     const docs = await VectorDocument.find({ userId, 'metadata.type': 'personal_doc' }).lean();
-    return performVectorSearch(docs, queryEmbedding, k, 0.60);
+    return performVectorSearch(docs, queryEmbedding, k, 0.30);
   } catch (error) {
     console.error('[RAG] Search personal documents failed:', error.message);
     return [];
