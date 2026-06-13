@@ -361,12 +361,7 @@ const Chat = () => {
   }, []);
 
   const [selectedModel,       setSelectedModel]       = useState(() => {
-    const mode = localStorage.getItem('tom_chat_mode') || 'standard';
-    const model = localStorage.getItem('tom_ai_model') || 'gemini-2.5-flash';
-    if (mode === 'personal' && !model.startsWith('gemini-')) {
-      return 'gemini-2.5-flash';
-    }
-    return model;
+    return localStorage.getItem('tom_ai_model') || 'gemini-2.5-flash';
   });
   const [showModelDropdown,   setShowModelDropdown]   = useState(false);
   const modelDropdownRef = useRef(null);
@@ -479,10 +474,6 @@ const Chat = () => {
   const switchMode = (mode) => {
     setChatMode(mode);
     localStorage.setItem('tom_chat_mode', mode);
-    if (mode === 'personal' && !selectedModel.startsWith('gemini-')) {
-      setSelectedModel('gemini-2.5-flash');
-      localStorage.setItem('tom_ai_model', 'gemini-2.5-flash');
-    }
     // Create a fresh session for the chosen mode
     const s = createSession(mode);
     setSessionId(s.id);

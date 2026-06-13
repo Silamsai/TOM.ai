@@ -250,18 +250,6 @@ const processTaskCreation = async (userId, responseText, user) => {
  * Drop-in replacement for claudeService.sendMessage()
  */
 const sendMessage = async (userId, userMessage, user, selectedModel = 'gemini-2.5-flash', mode = 'standard') => {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey || apiKey === 'your_gemini_api_key_here') {
-    throw new Error('GEMINI_API_KEY is not configured in .env');
-  }
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-
-  // Initialize MCP tools if not already done
-  await getMCPClient();
-  const geminiTools = mcpTools.map(mapMCPToolToGemini);
-
   // Fetch recent chat history from MongoDB for context memory
   let formattedHistory = [];
   let rawHistory = [];
@@ -432,6 +420,18 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
       console.error('[Grok] Failed, falling back to Gemini simulation. Error:', grokErr.message);
     }
   }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+    throw new Error('GEMINI_API_KEY is not configured in the Admin Panel or .env');
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+
+  // Initialize MCP tools if not already done
+  await getMCPClient();
+  const geminiTools = mcpTools.map(mapMCPToolToGemini);
 
   let lastError;
 

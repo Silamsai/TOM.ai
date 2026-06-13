@@ -11,17 +11,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const VectorDocument = require('../models/VectorDocument');
 const PersonalDocument = require('../models/PersonalDocument');
 
-let genAIInstance = null;
-
 const getGenAI = () => {
-  if (!genAIInstance) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === 'your_gemini_api_key_here') {
-      throw new Error('GEMINI_API_KEY is not configured in .env');
-    }
-    genAIInstance = new GoogleGenerativeAI(apiKey);
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+    throw new Error('GEMINI_API_KEY is not configured in the Admin Panel or .env');
   }
-  return genAIInstance;
+  return new GoogleGenerativeAI(apiKey);
 };
 
 /**
