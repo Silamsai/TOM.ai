@@ -37,22 +37,43 @@ const DEFAULT_CONFIG = {
   profile: { adminName: 'Admin', adminEmail: '', appName: 'TOM.AI' },
 };
 
+let configCache = null;
+
 const readConfig = () => {
+  if (configCache) return configCache;
   try {
     if (fs.existsSync(CONFIG_PATH)) {
       const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-      return {
+      configCache = {
         ...DEFAULT_CONFIG, ...raw,
         ai:      { ...DEFAULT_CONFIG.ai,      ...raw.ai },
         rag:     { ...DEFAULT_CONFIG.rag,     ...raw.rag },
         profile: { ...DEFAULT_CONFIG.profile, ...raw.profile },
       };
+      return configCache;
     }
   } catch (e) { console.error('[admin] config read error:', e.message); }
-  return { ...DEFAULT_CONFIG };
+  configCache = { ...DEFAULT_CONFIG };
+  return configCache;
 };
 
-const writeConfig = (cfg) => fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
+const writeConfig = (cfg) => {
+  configCache = cfg;
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
+};
+
+// Load config on startup to apply saved API keys to process.env immediately
+try {
+  const bootCfg = readConfig();
+  if (bootCfg.ai && bootCfg.ai.apiKey) {
+    if (bootCfg.ai.provider === 'gemini')    process.env.GEMINI_API_KEY    = bootCfg.ai.apiKey;
+    if (bootCfg.ai.provider === 'openai')    process.env.OPENAI_API_KEY    = bootCfg.ai.apiKey;
+    if (bootCfg.ai.provider === 'anthropic') process.env.ANTHROPIC_API_KEY = bootCfg.ai.apiKey;
+    console.log(`🔑 [TOM.AI Admin] Loaded AI API key for provider: ${bootCfg.ai.provider} from config.`);
+  }
+} catch (bootErr) {
+  console.error('⚠️ [TOM.AI Admin] Failed to boot-load API keys:', bootErr.message);
+}
 
 const mask = (str) => str ? '•'.repeat(Math.min(str.length, 24)) : '';
 

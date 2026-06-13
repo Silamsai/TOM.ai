@@ -96,6 +96,67 @@ const indexDocument = async (userId, content, metadata = {}) => {
 };
 
 /**
+ * Helper function to perform highly optimized in-memory vector search.
+ * Hoists query magnitude calculation and uses single-pass Top-K insertion
+ * to avoid memory allocation and full sorting overhead.
+ */
+const performVectorSearch = (docs, queryEmbedding, k, threshold) => {
+  if (docs.length === 0) return [];
+
+  // Pre-calculate query magnitude once
+  let normQuery = 0.0;
+  for (let i = 0; i < queryEmbedding.length; i++) {
+    normQuery += queryEmbedding[i] * queryEmbedding[i];
+  }
+  const magQuery = Math.sqrt(normQuery);
+
+  const topK = [];
+
+  for (let i = 0; i < docs.length; i++) {
+    const doc = docs[i];
+    const vecB = doc.embedding;
+    if (!vecB || vecB.length === 0) continue;
+
+    let dotProduct = 0.0;
+    let normB = 0.0;
+    
+    // Single-pass computation for dot product and doc norm
+    const len = Math.min(queryEmbedding.length, vecB.length);
+    for (let j = 0; j < len; j++) {
+      dotProduct += queryEmbedding[j] * vecB[j];
+      normB += vecB[j] * vecB[j];
+    }
+
+    const score = (magQuery === 0 || normB === 0)
+      ? 0
+      : dotProduct / (magQuery * Math.sqrt(normB));
+
+    if (score > threshold) {
+      const scoredDoc = {
+        content: doc.content,
+        score,
+        metadata: doc.metadata,
+      };
+
+      // Keep sorted Top-K array (Insertion sort)
+      const insertIdx = topK.findIndex(item => score > item.score);
+      if (insertIdx === -1) {
+        if (topK.length < k) {
+          topK.push(scoredDoc);
+        }
+      } else {
+        topK.splice(insertIdx, 0, scoredDoc);
+        if (topK.length > k) {
+          topK.pop();
+        }
+      }
+    }
+  }
+
+  return topK;
+};
+
+/**
  * Searches user's indexed documents using cosine similarity.
  */
 const searchDocuments = async (userId, query, k = 4) => {
@@ -103,22 +164,7 @@ const searchDocuments = async (userId, query, k = 4) => {
   try {
     const queryEmbedding = await getEmbedding(query);
     const docs = await VectorDocument.find({ userId }).lean();
-    if (docs.length === 0) return [];
-
-    const scoredDocs = docs.map((doc) => {
-      const score = cosineSimilarity(queryEmbedding, doc.embedding);
-      return {
-        content: doc.content,
-        score,
-        metadata: doc.metadata,
-      };
-    });
-
-    // Sort by score descending
-    scoredDocs.sort((a, b) => b.score - a.score);
-
-    // Return top k results with score > 0.65 (relevance threshold)
-    return scoredDocs.filter((d) => d.score > 0.65).slice(0, k);
+    return performVectorSearch(docs, queryEmbedding, k, 0.65);
   } catch (error) {
     console.error('[RAG] Search documents failed:', error.message);
     return [];
@@ -176,22 +222,7 @@ const searchPersonalDocuments = async (userId, query, k = 6) => {
   try {
     const queryEmbedding = await getEmbedding(query);
     const docs = await VectorDocument.find({ userId, 'metadata.type': 'personal_doc' }).lean();
-    if (docs.length === 0) return [];
-
-    const scoredDocs = docs.map((doc) => {
-      const score = cosineSimilarity(queryEmbedding, doc.embedding);
-      return {
-        content: doc.content,
-        score,
-        metadata: doc.metadata,
-      };
-    });
-
-    // Sort by score descending
-    scoredDocs.sort((a, b) => b.score - a.score);
-
-    // Return top k results with score > 0.60
-    return scoredDocs.filter((d) => d.score > 0.60).slice(0, k);
+    return performVectorSearch(docs, queryEmbedding, k, 0.60);
   } catch (error) {
     console.error('[RAG] Search personal documents failed:', error.message);
     return [];

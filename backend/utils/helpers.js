@@ -1,4 +1,3 @@
-const nodemailer = require('nodemailer');
 const { OTP_VALIDITY_MINUTES } = require('../config/constants');
 
 /**
@@ -8,32 +7,6 @@ const { OTP_VALIDITY_MINUTES } = require('../config/constants');
 const generateOTP = () => {
   const otp = Math.floor(100000 + Math.random() * 900000);
   return String(otp);
-};
-
-/**
- * Sends an email using Nodemailer + Gmail SMTP.
- * @param {string} to   - Recipient email address
- * @param {string} subject - Email subject line
- * @param {string} html - HTML body content
- * @returns {Promise<void>}
- */
-const sendEmail = async (to, subject, html) => {
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_PASS,
-    },
-  });
-
-  const mailOptions = {
-    from: `"TOM.AI" <${process.env.GMAIL_USER}>`,
-    to,
-    subject,
-    html,
-  };
-
-  await transporter.sendMail(mailOptions);
 };
 
 /**
@@ -76,7 +49,6 @@ const calculateOTPExpiry = () => {
 
 module.exports = {
   generateOTP,
-  sendEmail,
   formatErrorResponse,
   formatSuccessResponse,
   getCurrentDateTime,
