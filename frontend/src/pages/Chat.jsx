@@ -589,54 +589,56 @@ const Chat = () => {
               )}
 
               {/* Model selector pill */}
-              <div className="chat-model-select-wrapper" ref={modelDropdownRef}>
-                <button
-                  className="chat-pill-btn"
-                  onClick={() => setShowModelDropdown(!showModelDropdown)}
-                  type="button"
-                  title="Choose AI Model"
-                >
-                  <span className="chat-model-dot" style={{ backgroundColor: currentModelObj.color, boxShadow: `0 0 5px ${currentModelObj.color}` }} />
-                  <span>{currentModelObj.shortName}</span>
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: '1px', transform: showModelDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </button>
+              {chatMode !== 'personal' && (
+                <div className="chat-model-select-wrapper" ref={modelDropdownRef}>
+                  <button
+                    className="chat-pill-btn"
+                    onClick={() => setShowModelDropdown(!showModelDropdown)}
+                    type="button"
+                    title="Choose AI Model"
+                  >
+                    <span className="chat-model-dot" style={{ backgroundColor: currentModelObj.color, boxShadow: `0 0 5px ${currentModelObj.color}` }} />
+                    <span>{currentModelObj.shortName}</span>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: '1px', transform: showModelDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
 
-                {showModelDropdown && (
-                  <div className="chat-model-dropdown">
-                    <div className="chat-model-dropdown-header">Select AI Model</div>
-                    <div className="chat-model-dropdown-list">
-                      {(chatMode === 'personal' ? MODELS.filter(m => m.id.startsWith('gemini-')) : MODELS).map(m => (
-                        <button
-                          key={m.id}
-                          className={`chat-model-item ${selectedModel === m.id ? 'active' : ''}`}
-                          onClick={() => {
-                            setSelectedModel(m.id);
-                            localStorage.setItem('tom_ai_model', m.id);
-                            setShowModelDropdown(false);
-                          }}
-                          type="button"
-                        >
-                          <span className="chat-model-item-emoji">{m.icon}</span>
-                          <div className="chat-model-item-body">
-                            <div className="chat-model-item-name">
-                              {m.name}
-                              {['gemini-3.5-flash', 'claude-4.8-opus'].includes(m.id) ? (
-                                <span className="chat-model-sim-badge">SIMULATED</span>
-                              ) : null}
+                  {showModelDropdown && (
+                    <div className="chat-model-dropdown">
+                      <div className="chat-model-dropdown-header">Select AI Model</div>
+                      <div className="chat-model-dropdown-list">
+                        {MODELS.map(m => (
+                          <button
+                            key={m.id}
+                            className={`chat-model-item ${selectedModel === m.id ? 'active' : ''}`}
+                            onClick={() => {
+                              setSelectedModel(m.id);
+                              localStorage.setItem('tom_ai_model', m.id);
+                              setShowModelDropdown(false);
+                            }}
+                            type="button"
+                          >
+                            <span className="chat-model-item-emoji">{m.icon}</span>
+                            <div className="chat-model-item-body">
+                              <div className="chat-model-item-name">
+                                {m.name}
+                                {['gemini-3.5-flash', 'claude-4.8-opus'].includes(m.id) ? (
+                                  <span className="chat-model-sim-badge">SIMULATED</span>
+                                ) : null}
+                              </div>
+                              <div className="chat-model-item-desc">{m.desc}</div>
                             </div>
-                            <div className="chat-model-item-desc">{m.desc}</div>
-                          </div>
-                          {selectedModel === m.id && (
-                            <span className="chat-model-item-check">✓</span>
-                          )}
-                        </button>
-                      ))}
+                            {selectedModel === m.id && (
+                              <span className="chat-model-item-check">✓</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               <div style={{ flex: 1 }} />
 
