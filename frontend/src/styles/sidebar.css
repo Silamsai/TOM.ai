@@ -494,3 +494,75 @@
   from { transform: scale(0.95); opacity: 0; }
   to   { transform: scale(1);    opacity: 1; }
 }
+
+/* ════ MOBILE RESPONSIVENESS ════ */
+@media (max-width: 768px) {
+  /* Sidebar: overlay mode on mobile — ensure it slides over content */
+  .chat-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 200;
+    width: 80vw;
+    max-width: 300px;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .chat-sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* MCP modal: adjust size for mobile */
+  .mcp-modal {
+    width: 95vw;
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  /* MCP app items */
+  .mcp-app {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .mcp-connect-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  /* Topbar: reduce button size */
+  .chat-topbar-connect-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  /* Sidebar session items: bigger tap target */
+  .sidebar-session-item {
+    padding: 10px 12px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Sidebar narrower on very small screens */
+  .chat-sidebar {
+    width: 88vw;
+    max-width: 280px;
+  }
+
+  /* Sidebar header */
+  .sidebar-header {
+    padding: 12px 14px;
+  }
+
+  /* Sidebar new chat button */
+  .sidebar-new-chat-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  /* Sidebar session title */
+  .sidebar-session-title {
+    font-size: 12px;
+  }
+}
