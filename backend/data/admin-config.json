@@ -43,8 +43,10 @@
   ],
   "ai": {
     "provider": "gemini",
-    "apiKey": "",
     "model": "gemini-2.5-flash",
+    "apiKeys": {
+      "gemini": "AIzaSyCbriqDhuvfct7In3B6Y-AZCYthzqSE_II"
+    },
     "providers": [
       {
         "id": "gemini",
