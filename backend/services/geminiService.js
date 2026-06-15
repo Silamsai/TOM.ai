@@ -81,7 +81,19 @@ const mapMCPToolToGemini = (tool) => {
  * Drop-in replacement for claudeService.sendMessage()
  */
 const callOpenAI = async (model, userMessage, history, systemPrompt) => {
-  const apiKey = process.env.OPENAI_API_KEY;
+  let apiKey = process.env.OPENAI_API_KEY;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const configPath = path.join(__dirname, '../data/admin-config.json');
+    if (fs.existsSync(configPath)) {
+      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (cfg.ai?.apiKeys?.openai) {
+        apiKey = cfg.ai.apiKeys.openai;
+      }
+    }
+  } catch (e) {}
+
   const messages = [
     { role: 'system', content: systemPrompt }
   ];
@@ -134,7 +146,19 @@ const callOpenAI = async (model, userMessage, history, systemPrompt) => {
 };
 
 const callAnthropic = async (model, userMessage, history, systemPrompt) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  let apiKey = process.env.ANTHROPIC_API_KEY;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const configPath = path.join(__dirname, '../data/admin-config.json');
+    if (fs.existsSync(configPath)) {
+      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (cfg.ai?.apiKeys?.anthropic) {
+        apiKey = cfg.ai.apiKeys.anthropic;
+      }
+    }
+  } catch (e) {}
+
   const messages = [];
   
   history.forEach(h => {
@@ -411,7 +435,18 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
     }
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  let apiKey = process.env.GEMINI_API_KEY;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const configPath = path.join(__dirname, '../data/admin-config.json');
+    if (fs.existsSync(configPath)) {
+      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (cfg.ai?.apiKeys?.gemini) {
+        apiKey = cfg.ai.apiKeys.gemini;
+      }
+    }
+  } catch (e) {}
 
   if (!apiKey || apiKey === 'your_gemini_api_key_here') {
     throw new Error('GEMINI_API_KEY is not configured in the Admin Panel or .env');
