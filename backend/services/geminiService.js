@@ -442,8 +442,8 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
     const configPath = path.join(__dirname, '../data/admin-config.json');
     if (fs.existsSync(configPath)) {
       const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      // Only use admin-config key if it's non-empty AND looks like a valid Gemini API key (starts with AIza)
-      if (cfg.ai?.apiKeys?.gemini && cfg.ai.apiKeys.gemini.startsWith('AIza')) {
+      // Only override with admin-config key if it's a non-empty, plausible API key (>= 20 chars)
+      if (cfg.ai?.apiKeys?.gemini && cfg.ai.apiKeys.gemini.length >= 20) {
         apiKey = cfg.ai.apiKeys.gemini;
       }
     }
