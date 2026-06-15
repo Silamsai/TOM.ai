@@ -7,9 +7,37 @@ const CodeBlock = ({ lang, code }) => {
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(err => {
+          console.error('Failed to copy text: ', err);
+          fallbackCopy();
+        });
+    } else {
+      fallbackCopy();
+    }
+  };
+
+  const fallbackCopy = () => {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = code;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Fallback copy failed', err);
+    }
   };
 
   return (
@@ -87,6 +115,11 @@ const renderMarkdown = (text) => {
     if (/^\d+\. /.test(raw)) { result.push(<div key={i} className="msg-bullet">{inline(raw)}</div>); return; }
     result.push(<div key={i} className="msg-line">{inline(raw)}</div>);
   });
+  if (inCode && codeLines.length > 0) {
+    result.push(
+      <CodeBlock key="cb-unclosed" lang={codeLang} code={codeLines.join('\n')} />
+    );
+  }
   return result;
 };
 
