@@ -193,15 +193,59 @@
   color: var(--grey-50);
 }
 
-.msg-code-block {
-  background: var(--grey-900);
-  border: 1px solid var(--border-strong);
+.msg-code-container {
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-md);
-  padding: 12px 14px;
-  margin: 8px 0;
-  overflow-x: auto;
-  position: relative;
+  margin: 12px 0;
+  overflow: hidden;
+  background: #0d0d12;
 }
+
+.msg-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #14141b;
+  padding: 6px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.msg-code-lang {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.msg-code-copy-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.msg-code-copy-btn:hover {
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.msg-code-block {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  background: none;
+}
+
 .msg-code-block code {
   font-family: 'Courier New', monospace;
   font-size: 12px;
@@ -209,14 +253,22 @@
   white-space: pre;
   line-height: 1.6;
 }
-.msg-code-lang {
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 8px;
+
+/* Image Attachment Viewer inside bubble */
+.msg-attachment-image-wrap {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.msg-attachment-image-wrap:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* PDF export button styling */
+.msg-pdf-btn {
+  transition: color 0.2s ease;
+}
+.msg-pdf-btn:hover {
+  color: var(--white) !important;
 }
 
 

@@ -42,6 +42,15 @@ const chatHistorySchema = new mongoose.Schema(
       type: String,
       default: 'gemini-2.5-flash',
     },
+    attachments: [
+      {
+        inlineData: {
+          data: { type: String },
+          mimeType: { type: String }
+        },
+        fileName: { type: String }
+      }
+    ]
   },
   { timestamps: false } // manual timestamp field `timestamp` is used
 );

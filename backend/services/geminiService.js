@@ -92,7 +92,25 @@ const callOpenAI = async (model, userMessage, history, systemPrompt) => {
   });
 
   const textMsg = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
-  messages.push({ role: 'user', content: textMsg });
+  
+  if (typeof userMessage === 'object' && userMessage.attachments && userMessage.attachments.length > 0) {
+    const userContent = [
+      { type: 'text', text: textMsg }
+    ];
+    userMessage.attachments.forEach(att => {
+      if (att.inlineData && att.inlineData.mimeType.startsWith('image/')) {
+        userContent.push({
+          type: 'image_url',
+          image_url: {
+            url: `data:${att.inlineData.mimeType};base64,${att.inlineData.data}`
+          }
+        });
+      }
+    });
+    messages.push({ role: 'user', content: userContent });
+  } else {
+    messages.push({ role: 'user', content: textMsg });
+  }
 
   const res = await axios.post('https://api.openai.com/v1/chat/completions', {
     model: model || 'gpt-4o',
@@ -125,7 +143,27 @@ const callAnthropic = async (model, userMessage, history, systemPrompt) => {
   });
 
   const textMsg = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
-  messages.push({ role: 'user', content: textMsg });
+  
+  if (typeof userMessage === 'object' && userMessage.attachments && userMessage.attachments.length > 0) {
+    const userContent = [
+      { type: 'text', text: textMsg }
+    ];
+    userMessage.attachments.forEach(att => {
+      if (att.inlineData && att.inlineData.mimeType.startsWith('image/')) {
+        userContent.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: att.inlineData.mimeType,
+            data: att.inlineData.data
+          }
+        });
+      }
+    });
+    messages.push({ role: 'user', content: userContent });
+  } else {
+    messages.push({ role: 'user', content: textMsg });
+  }
 
   const res = await axios.post('https://api.anthropic.com/v1/messages', {
     model: model || 'claude-3-5-sonnet-20241022',
@@ -145,41 +183,6 @@ const callAnthropic = async (model, userMessage, history, systemPrompt) => {
     usage: {
       input: res.data.usage?.input_tokens || 0,
       output: res.data.usage?.output_tokens || 0
-    }
-  };
-};
-
-const callGrok = async (model, userMessage, history, systemPrompt) => {
-  const apiKey = process.env.GROK_API_KEY;
-  const messages = [
-    { role: 'system', content: systemPrompt }
-  ];
-  
-  history.forEach(h => {
-    messages.push({ role: 'user', content: h.userMessage || '' });
-    messages.push({ role: 'assistant', content: h.claudeResponse || '' });
-  });
-
-  const textMsg = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
-  messages.push({ role: 'user', content: textMsg });
-
-  const res = await axios.post('https://api.x.ai/v1/chat/completions', {
-    model: model || 'grok-2',
-    messages,
-    max_tokens: 2048
-  }, {
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    }
-  });
-
-  const choice = res.data.choices[0];
-  return {
-    response: choice.message.content,
-    usage: {
-      input: res.data.usage?.prompt_tokens || 0,
-      output: res.data.usage?.completion_tokens || 0
     }
   };
 };
@@ -408,19 +411,6 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
     }
   }
 
-  // Call Grok API directly if key is configured
-  if (selectedModel && selectedModel.startsWith('grok-') && process.env.GROK_API_KEY && process.env.GROK_API_KEY !== 'your_grok_api_key_here') {
-    try {
-      console.log(`[Grok] Routing to real Grok API with model: ${selectedModel}`);
-      const res = await callGrok(selectedModel, userMessage, rawHistory, systemPrompt);
-      const processed = await processTaskCreation(userId, res.response, user);
-      res.response = processed.cleanText;
-      return res;
-    } catch (grokErr) {
-      console.error('[Grok] Failed, falling back to Gemini simulation. Error:', grokErr.message);
-    }
-  }
-
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey || apiKey === 'your_gemini_api_key_here') {
@@ -455,12 +445,19 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
         });
         
         let contentParts = [];
-        if (typeof userMessage === 'object' && userMessage.text) {
-          contentParts.push(userMessage.text); // Gemini sometimes prefers string for text, but let's use string
+        if (typeof userMessage === 'object') {
+          const text = userMessage.text || '';
           if (userMessage.attachments && userMessage.attachments.length > 0) {
-            contentParts = [userMessage.text, ...userMessage.attachments];
+            // Map attachments to strictly conform to Gemini SDK Part type
+            const cleanAttachments = userMessage.attachments.map(att => ({
+              inlineData: {
+                data: att.inlineData.data,
+                mimeType: att.inlineData.mimeType
+              }
+            }));
+            contentParts = text ? [text, ...cleanAttachments] : cleanAttachments;
           } else {
-            contentParts = userMessage.text;
+            contentParts = text;
           }
         } else {
           contentParts = String(userMessage);
@@ -565,8 +562,18 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
 
   // All models failed — use local fallback
   console.warn('[Gemini] All models failed, using local fallback. Error:', lastError?.message?.substring(0, 100));
+  
+  const lastErrorMsg = lastError?.message || '';
+  if (lastErrorMsg.includes('leaked') || lastErrorMsg.includes('API_KEY_INVALID') || lastErrorMsg.includes('API key not valid') || lastErrorMsg.includes('key was reported as leaked') || lastErrorMsg.includes('PERMISSION_DENIED')) {
+    return {
+      response: `⚠️ **AI Brain Connection Error**: Your Gemini API key appears to be invalid or was reported as leaked. Please generate a new key from https://aistudio.google.com/app/apikey and update it in the Admin Panel settings under **AI Configuration**.`,
+      usage: { input: 0, output: 0 },
+    };
+  }
+
+  const textMsg = typeof userMessage === 'object' ? (userMessage.text || '') : String(userMessage);
   return {
-    response: localFallback(userMessage),
+    response: localFallback(textMsg),
     usage: { input: 0, output: 0 },
   };
 };

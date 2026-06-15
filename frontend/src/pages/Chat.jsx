@@ -456,7 +456,7 @@ const Chat = () => {
           const res = await getChatHistory(sessionId);
           const history = res.data.data || [];
           const mapped = history.flatMap(item => [
-            { type: 'user', message: item.userMessage,    timestamp: item.timestamp, id: `u-${item.messageId}` },
+            { type: 'user', message: item.userMessage,    timestamp: item.timestamp, id: `u-${item.messageId}`, attachments: item.attachments },
             { type: 'bot',  message: item.claudeResponse, timestamp: item.timestamp, id: `b-${item.messageId}` },
           ]);
           setMessages(mapped);
@@ -956,6 +956,7 @@ const Chat = () => {
                   userPicture={user?.picture}
                   userName={user?.name || guest?.name || 'Guest'}
                   onReply={setReplyingTo}
+                  attachments={msg.attachments}
                 />
               ))}
               {loading && (

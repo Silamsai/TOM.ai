@@ -39,6 +39,7 @@ router.post('/message', async (req, res, next) => {
       tokens: { input: usage.input, output: usage.output },
       conversationId: conversationId || null,
       model: model || 'gemini-2.5-flash',
+      attachments: attachments || [],
     });
 
     // Index chat in RAG Vector Store

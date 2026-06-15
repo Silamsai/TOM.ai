@@ -49,17 +49,6 @@ const ALL_PROVIDERS = [
       { id: 'claude-3-haiku-20240307',    name: 'Claude 3 Haiku',   shortName: 'Haiku 3',    desc: 'Fast & cost-efficient Claude',                  icon: '🎍' },
     ],
   },
-  {
-    id: 'grok',
-    name: 'xAI Grok',
-    icon: '🌀',
-    color: '#a855f7',
-    models: [
-      { id: 'grok-2',      name: 'Grok 2',      shortName: 'Grok 2',   desc: 'xAI flagship reasoning model', icon: '🌀' },
-      { id: 'grok-2-mini', name: 'Grok 2 Mini', shortName: 'Grok Mini', desc: 'Fast lightweight Grok model',  icon: '⚡' },
-      { id: 'grok-beta',   name: 'Grok Beta',   shortName: 'Grok Beta', desc: 'xAI experimental preview model', icon: '🧪' },
-    ],
-  },
 ];
 
 const DEFAULT_CONFIG = {
@@ -145,7 +134,6 @@ const applyApiKeysToEnv = (ai) => {
   if (keys.gemini)    process.env.GEMINI_API_KEY    = keys.gemini;    else delete process.env.GEMINI_API_KEY;
   if (keys.openai)    process.env.OPENAI_API_KEY    = keys.openai;    else delete process.env.OPENAI_API_KEY;
   if (keys.anthropic) process.env.ANTHROPIC_API_KEY = keys.anthropic; else delete process.env.ANTHROPIC_API_KEY;
-  if (keys.grok)      process.env.GROK_API_KEY       = keys.grok;      else delete process.env.GROK_API_KEY;
 };
 
 // Load config on startup to apply saved API keys to process.env immediately
