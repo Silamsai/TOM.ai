@@ -165,151 +165,117 @@ function MCPsTab({ toast }) {
   );
 }
 
-/* ══ AI Tab ══════════════════════════════════════════════════════════ */
-function AITab({ toast }) {
-  const [ai, setAi] = useState({ provider:'gemini', model:'', apiKeys:{}, allProviders:[] });
-  const [modal, setModal] = useState(null); // null | 'add' | provider obj for edit
-  const [formProvider, setFormProvider] = useState('');
-  const [formKey, setFormKey] = useState('');
-  const [busy, setBusy] = useState(false);
+/* ══ AI Tab (Read-Only Status View) ═════════════════════════════════ */
+function AITab() {
+  const [ai, setAi] = useState({ provider: 'gemini', model: '', allProviders: [] });
 
-  const load = () => fetch(`${API}/ai`, { headers: authHdr() }).then(r=>r.json()).then(d=>{
-    if(d.success) setAi(d.data);
-  });
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    fetch(`${API}/ai`, { headers: authHdr() })
+      .then(r => r.json())
+      .then(d => { if (d.success) setAi(d.data); });
+  }, []);
 
-  const configuredProviders = (ai.allProviders||[]).filter(p => !!(ai.apiKeys||{})[p.id]);
-  const unconfiguredProviders = (ai.allProviders||[]).filter(p => !(ai.apiKeys||{})[p.id]);
+  const activeProvider = (ai.allProviders || []).find(p => p.id === ai.provider);
 
-  const openAdd = () => {
-    setFormProvider(unconfiguredProviders[0]?.id || '');
-    setFormKey('');
-    setModal('add');
+  const providerIcons = {
+    gemini: '✨',
+    openai: '🤖',
+    anthropic: '🧠',
   };
 
-  const openEdit = (providerId) => {
-    setFormProvider(providerId);
-    setFormKey('');
-    setModal('edit');
-  };
-
-  const saveKey = async () => {
-    if (!formProvider || !formKey) { toast('Please select a provider and enter an API key', 'error'); return; }
-    setBusy(true);
-    try {
-      const provider = (ai.allProviders||[]).find(p => p.id === formProvider);
-      const defaultModel = provider?.models?.[0]?.id || '';
-      await fetch(`${API}/ai/keys`, { method:'POST', headers: authHdr(), body: JSON.stringify({ providerId: formProvider, apiKey: formKey, model: defaultModel }) });
-      toast(`API key saved for ${provider?.name || formProvider}`, 'success');
-      setModal(null); setFormKey(''); setFormProvider('');
-      await load();
-    } catch { toast('Failed to save API key', 'error'); }
-    setBusy(false);
-  };
-
-  const deleteKey = async (providerId) => {
-    const provider = (ai.allProviders||[]).find(p => p.id === providerId);
-    if (!window.confirm(`Remove API key for ${provider?.name || providerId}? This provider's models will no longer appear in the chat.`)) return;
-    setBusy(true);
-    await fetch(`${API}/ai/keys/${providerId}`, { method:'DELETE', headers: authHdr() });
-    toast(`API key removed for ${provider?.name || providerId}`, 'success');
-    await load();
-    setBusy(false);
-  };
-
-  const setActive = async (providerId) => {
-    const provider = (ai.allProviders||[]).find(p => p.id === providerId);
-    const defaultModel = provider?.models?.[0]?.id || '';
-    setBusy(true);
-    await fetch(`${API}/ai`, { method:'PUT', headers: authHdr(), body: JSON.stringify({ provider: providerId, model: defaultModel }) });
-    toast(`Active provider set to ${provider?.name || providerId}`, 'success');
-    await load();
-    setBusy(false);
+  const providerColors = {
+    gemini: 'linear-gradient(135deg, #4285f4 0%, #34a853 100%)',
+    openai: 'linear-gradient(135deg, #10a37f 0%, #1a7f64 100%)',
+    anthropic: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
   };
 
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-        <div>
-          <div className="adm-section-title">AI Configuration</div>
-          <div className="adm-section-sub">Manage API keys for AI providers. Only providers with keys appear in chat.</div>
-        </div>
-        <button className="adm-btn adm-btn-primary" onClick={openAdd} disabled={unconfiguredProviders.length === 0}>+ Add New API Key</button>
+      <div style={{ marginBottom: 24 }}>
+        <div className="adm-section-title">AI Status</div>
+        <div className="adm-section-sub">Current AI provider and model powering TOM.AI</div>
       </div>
 
-      {configuredProviders.length === 0 && (
-        <div className="adm-card" style={{textAlign:'center',padding:'40px 20px',color:'var(--adm-dim)'}}>
-          <div style={{fontSize:40,marginBottom:12}}>🔑</div>
-          <div style={{fontSize:14,marginBottom:8}}>No API keys configured yet</div>
-          <div style={{fontSize:12}}>Click "Add New API Key" to get started. Add your Google Gemini API key first.</div>
+      {/* Active Provider Hero Card */}
+      <div className="adm-card" style={{
+        background: providerColors[ai.provider] || 'var(--adm-card)',
+        marginBottom: 20,
+        padding: '28px 24px',
+        borderRadius: 16,
+        color: '#fff',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', right: 20, top: 16, fontSize: 64, opacity: 0.18, lineHeight: 1 }}>
+          {providerIcons[ai.provider] || '🤖'}
         </div>
-      )}
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, opacity: 0.8, textTransform: 'uppercase', marginBottom: 8 }}>
+          Active AI Provider
+        </div>
+        <div style={{ fontSize: 32, fontWeight: 800, marginBottom: 6 }}>
+          {activeProvider?.name || ai.provider || 'Gemini'}
+        </div>
+        <div style={{ fontSize: 14, opacity: 0.85, fontWeight: 500 }}>
+          Model: <strong>{ai.model || 'gemini-2.5-flash'}</strong>
+        </div>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          marginTop: 14, background: 'rgba(255,255,255,0.2)',
+          borderRadius: 20, padding: '4px 14px', fontSize: 12, fontWeight: 600,
+        }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />
+          ACTIVE & RUNNING
+        </div>
+      </div>
 
-      <div className="adm-mcp-grid">
-        {configuredProviders.map(p => (
-          <div className={`adm-mcp-card ${ai.provider === p.id ? 'adm-ai-active-card' : ''}`} key={p.id}>
-            <div className="adm-mcp-icon-wrap" style={{fontSize:28}}>{p.icon}</div>
-            <div className="adm-mcp-info">
-              <div className="adm-mcp-name" style={{display:'flex',alignItems:'center',gap:8}}>
-                {p.name}
-                {ai.provider === p.id && <span className="adm-ai-active-badge">ACTIVE</span>}
-              </div>
-              <div className="adm-mcp-desc" style={{fontSize:11,color:'var(--adm-dim)'}}>
-                Key: {(ai.apiKeys||{})[p.id] || '••••••••'}
-              </div>
-              <div className="adm-mcp-desc" style={{fontSize:11,marginTop:4}}>
-                Models: {(p.models||[]).map(m => m.shortName || m.name).join(', ')}
-              </div>
-              <div className="adm-mcp-actions" style={{marginTop:8}}>
-                {ai.provider !== p.id && (
-                  <button className="adm-btn adm-btn-primary adm-btn-sm" onClick={()=>setActive(p.id)}>Set Active</button>
-                )}
-                <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={()=>openEdit(p.id)}>Update Key</button>
-                <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={()=>deleteKey(p.id)}>Remove</button>
-              </div>
+      {/* Info Note */}
+      <div className="adm-card" style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '18px 20px' }}>
+        <div style={{ fontSize: 24, lineHeight: 1 }}>ℹ️</div>
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>API Key Management</div>
+          <div style={{ fontSize: 13, color: 'var(--adm-dim)', lineHeight: 1.6 }}>
+            API keys are configured securely via environment variables on the server.
+            To update the Gemini API key, go to your <strong>Render Dashboard → Environment Variables</strong> and set <code style={{ background: 'var(--adm-border)', padding: '1px 6px', borderRadius: 4 }}>GEMINI_API_KEY</code> to a valid key starting with <code style={{ background: 'var(--adm-border)', padding: '1px 6px', borderRadius: 4 }}>AIza...</code>
+          </div>
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="adm-btn adm-btn-secondary adm-btn-sm"
+            style={{ marginTop: 12, display: 'inline-block', textDecoration: 'none' }}
+          >
+            🔑 Get API Key from Google AI Studio ↗
+          </a>
+        </div>
+      </div>
+
+      {/* Available Providers */}
+      <div style={{ marginTop: 24, marginBottom: 10, fontWeight: 600, fontSize: 13 }}>Available Providers</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 12 }}>
+        {(ai.allProviders || [
+          { id: 'gemini', name: 'Google Gemini', models: [{ name: 'gemini-2.5-flash' }, { name: 'gemini-1.5-pro' }] },
+          { id: 'openai', name: 'OpenAI', models: [{ name: 'gpt-4o' }, { name: 'gpt-4o-mini' }] },
+          { id: 'anthropic', name: 'Anthropic', models: [{ name: 'claude-3.5-sonnet' }] },
+        ]).map(p => (
+          <div key={p.id} className="adm-card" style={{
+            padding: '14px 16px',
+            border: p.id === ai.provider ? '2px solid #4285f4' : '2px solid transparent',
+            borderRadius: 12,
+            opacity: p.id === ai.provider ? 1 : 0.6,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 20 }}>{providerIcons[p.id] || '🤖'}</span>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</span>
+              {p.id === ai.provider && (
+                <span className="adm-ai-active-badge" style={{ marginLeft: 'auto' }}>ACTIVE</span>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--adm-dim)' }}>
+              {(p.models || []).map(m => m.shortName || m.name).slice(0, 3).join(' · ')}
             </div>
           </div>
         ))}
       </div>
-
-      {/* Add / Edit API Key Modal */}
-      {modal && (
-        <div className="adm-overlay" onClick={()=>setModal(null)}>
-          <div className="adm-modal" onClick={e=>e.stopPropagation()}>
-            <div className="adm-modal-header">
-              <div className="adm-modal-title">{modal==='add'?'Add New API Key':'Update API Key'}</div>
-              <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={()=>setModal(null)}>✕</button>
-            </div>
-            <div className="adm-modal-body">
-              <div className="adm-field">
-                <label className="adm-label">Provider</label>
-                {modal === 'add' ? (
-                  <select className="adm-select" value={formProvider} onChange={e=>setFormProvider(e.target.value)}>
-                    {unconfiguredProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                ) : (
-                  <input className="adm-input" value={(ai.allProviders||[]).find(p=>p.id===formProvider)?.name || formProvider} disabled />
-                )}
-              </div>
-              {formProvider && (
-                <div className="adm-field">
-                  <label className="adm-label" style={{fontSize:11,color:'var(--adm-dim)'}}>
-                    Available models: {((ai.allProviders||[]).find(p=>p.id===formProvider)?.models||[]).map(m=>m.name).join(', ')}
-                  </label>
-                </div>
-              )}
-              <div className="adm-field">
-                <label className="adm-label">API Key *</label>
-                <input className="adm-input" type="password" value={formKey} onChange={e=>setFormKey(e.target.value)} placeholder="Paste your API key here…" />
-              </div>
-              <div className="adm-modal-actions">
-                <button className="adm-btn adm-btn-secondary" onClick={()=>setModal(null)}>Cancel</button>
-                <button className="adm-btn adm-btn-primary" onClick={saveKey} disabled={busy||!formProvider||!formKey}>{busy?'Saving…':'Save API Key'}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -403,7 +369,7 @@ function DashboardTab() {
       <div className="adm-card" style={{lineHeight:1.7,color:'var(--adm-dim)',fontSize:13.5}}>
         <div style={{fontWeight:600,color:'var(--adm-text)',marginBottom:8}}>Quick Guide</div>
         <div>📦 <strong>MCPs</strong> — Add or remove integrations like Gmail, Drive, Slack. Each MCP needs its API key to work.</div>
-        <div>🤖 <strong>AI</strong> — Switch between Gemini, OpenAI, or Anthropic. Enter the API key for the chosen provider.</div>
+        <div>🤖 <strong>AI</strong> — View the active AI provider and model. API keys are managed via server environment variables.</div>
         <div>📚 <strong>RAG</strong> — Enable the knowledge base so TOM.AI can reference your documents.</div>
         <div>👤 <strong>Profile</strong> — Update admin name, email, and change your password.</div>
       </div>
@@ -430,7 +396,7 @@ export default function AdminPanel() {
 
   if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
 
-  const tabMap = { dashboard: <DashboardTab />, mcps: <MCPsTab toast={showToast} />, ai: <AITab toast={showToast} />, rag: <RAGTab toast={showToast} />, profile: <ProfileTab toast={showToast} /> };
+  const tabMap = { dashboard: <DashboardTab />, mcps: <MCPsTab toast={showToast} />, ai: <AITab />, rag: <RAGTab toast={showToast} />, profile: <ProfileTab toast={showToast} /> };
   const cur = TABS.find(t => t.id === tab) || TABS[0];
 
   return (
