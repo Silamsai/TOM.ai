@@ -81,18 +81,7 @@ const mapMCPToolToGemini = (tool) => {
  * Drop-in replacement for claudeService.sendMessage()
  */
 const callOpenAI = async (model, userMessage, history, systemPrompt) => {
-  let apiKey = process.env.OPENAI_API_KEY;
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const configPath = path.join(__dirname, '../data/admin-config.json');
-    if (fs.existsSync(configPath)) {
-      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      if (cfg.ai?.apiKeys?.openai) {
-        apiKey = cfg.ai.apiKeys.openai;
-      }
-    }
-  } catch (e) {}
+  const apiKey = process.env.OPENAI_API_KEY;
 
   const messages = [
     { role: 'system', content: systemPrompt }
@@ -146,18 +135,7 @@ const callOpenAI = async (model, userMessage, history, systemPrompt) => {
 };
 
 const callAnthropic = async (model, userMessage, history, systemPrompt) => {
-  let apiKey = process.env.ANTHROPIC_API_KEY;
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const configPath = path.join(__dirname, '../data/admin-config.json');
-    if (fs.existsSync(configPath)) {
-      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      if (cfg.ai?.apiKeys?.anthropic) {
-        apiKey = cfg.ai.apiKeys.anthropic;
-      }
-    }
-  } catch (e) {}
+  const apiKey = process.env.ANTHROPIC_API_KEY;
 
   const messages = [];
   
@@ -435,21 +413,9 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
     }
   }
 
-  let apiKey = process.env.GEMINI_API_KEY;
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const configPath = path.join(__dirname, '../data/admin-config.json');
-    if (fs.existsSync(configPath)) {
-      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      // Only override with admin-config key if it's a non-empty, plausible API key (>= 20 chars)
-      if (cfg.ai?.apiKeys?.gemini && cfg.ai.apiKeys.gemini.length >= 20) {
-        apiKey = cfg.ai.apiKeys.gemini;
-      }
-    }
-  } catch (e) {}
+  const apiKey = process.env.GEMINI_API_KEY;
 
-  if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+  if (!apiKey || apiKey === 'your_gemini_api_key_here' || apiKey === 'your_gemini_api_key_starting_with_AIza') {
     throw new Error('GEMINI_API_KEY is not configured in the Admin Panel or .env');
   }
 

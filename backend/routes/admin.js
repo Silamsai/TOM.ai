@@ -91,7 +91,7 @@ const readConfig = () => {
       }
       
       // Seed from process.env if not configured in JSON yet
-      if (!aiMerged.apiKeys.gemini && process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
+      if (!aiMerged.apiKeys.gemini && process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here' && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_starting_with_AIza') {
         aiMerged.apiKeys.gemini = process.env.GEMINI_API_KEY;
         modified = true;
       }
@@ -112,7 +112,7 @@ const readConfig = () => {
   
   // If config doesn't exist, build from DEFAULT_CONFIG and seed gemini if available
   let aiMerged = { ...DEFAULT_CONFIG.ai };
-  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here' && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_starting_with_AIza') {
     aiMerged.apiKeys = { gemini: process.env.GEMINI_API_KEY };
   }
   configCache = { ...DEFAULT_CONFIG, ai: aiMerged };
@@ -128,12 +128,12 @@ const writeConfig = (cfg) => {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
 };
 
-// Helper to apply all stored API keys to process.env
+// Helper to apply all stored API keys to process.env (only if not already set)
 const applyApiKeysToEnv = (ai) => {
   const keys = ai.apiKeys || {};
-  if (keys.gemini)    process.env.GEMINI_API_KEY    = keys.gemini;    else delete process.env.GEMINI_API_KEY;
-  if (keys.openai)    process.env.OPENAI_API_KEY    = keys.openai;    else delete process.env.OPENAI_API_KEY;
-  if (keys.anthropic) process.env.ANTHROPIC_API_KEY = keys.anthropic; else delete process.env.ANTHROPIC_API_KEY;
+  if (keys.gemini && !process.env.GEMINI_API_KEY)       process.env.GEMINI_API_KEY    = keys.gemini;
+  if (keys.openai && !process.env.OPENAI_API_KEY)       process.env.OPENAI_API_KEY    = keys.openai;
+  if (keys.anthropic && !process.env.ANTHROPIC_API_KEY) process.env.ANTHROPIC_API_KEY = keys.anthropic;
 };
 
 // Load config on startup to apply saved API keys to process.env immediately
