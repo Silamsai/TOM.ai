@@ -442,7 +442,8 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
     const configPath = path.join(__dirname, '../data/admin-config.json');
     if (fs.existsSync(configPath)) {
       const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      if (cfg.ai?.apiKeys?.gemini) {
+      // Only use admin-config key if it's non-empty AND looks like a valid Gemini API key (starts with AIza)
+      if (cfg.ai?.apiKeys?.gemini && cfg.ai.apiKeys.gemini.startsWith('AIza')) {
         apiKey = cfg.ai.apiKeys.gemini;
       }
     }
@@ -601,7 +602,7 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
   const lastErrorMsg = lastError?.message || '';
   if (lastErrorMsg.includes('leaked') || lastErrorMsg.includes('API_KEY_INVALID') || lastErrorMsg.includes('API key not valid') || lastErrorMsg.includes('key was reported as leaked') || lastErrorMsg.includes('PERMISSION_DENIED')) {
     return {
-      response: `⚠️ **AI Brain Connection Error**: Your Gemini API key appears to be invalid or was reported as leaked. Please generate a new key from https://aistudio.google.com/app/apikey and update it in the Admin Panel settings under **AI Configuration**.`,
+      response: `⚠️ **AI Connection Error**: The Gemini API key is invalid or has expired. Please go to the **Admin Panel → AI Configuration** and update the Gemini API key with a valid one from [Google AI Studio](https://aistudio.google.com/app/apikey). Valid keys start with \`AIza...\``,
       usage: { input: 0, output: 0 },
     };
   }
