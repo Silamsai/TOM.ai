@@ -23,7 +23,7 @@ const connectDB = async () => {
       if (!adminExists) {
         await User.create({
           email: 'admin@tomai.com',
-          password: 'Admin@123',
+          password: process.env.ADMIN_PASSWORD || 'Admin@123',
           name: 'Admin User',
           emailVerified: true
         });
