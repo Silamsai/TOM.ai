@@ -1,18 +1,18 @@
 const express = require('express');
-const router  = express.Router();
-const fs      = require('fs');
-const path    = require('path');
-const jwt     = require('jsonwebtoken');
+const router = express.Router();
+const fs = require('fs');
+const path = require('path');
+const jwt = require('jsonwebtoken');
 
-const DATA_DIR   = path.join(__dirname, '../data');
+const DATA_DIR = path.join(__dirname, '../data');
 const CONFIG_PATH = path.join(DATA_DIR, 'admin-config.json');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin@tomai.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
-const ADMIN_SECRET   = (process.env.JWT_SECRET || 'secret') + '-admin';
+const ADMIN_SECRET = (process.env.JWT_SECRET || 'secret') + '-admin';
 
-console.log('🔑 [TOM.AI Admin] Credentials Configured:', { username: ADMIN_USERNAME, password: ADMIN_PASSWORD });
+console.log('🔑 [TOM.AI Admin] Admin user configured:', ADMIN_USERNAME);
 
 // All known providers catalogue — never changes
 const ALL_PROVIDERS = [
@@ -23,9 +23,11 @@ const ALL_PROVIDERS = [
     color: '#38bdf8',
     models: [
       { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', shortName: 'Flash 2.5', desc: 'Fast, responsive & multimodal', icon: '⚡' },
-      { id: 'gemini-2.5-pro',   name: 'Gemini 2.5 Pro',   shortName: 'Pro 2.5',   desc: 'Advanced reasoning & complex coding', icon: '🧠' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', shortName: 'Pro 2.5', desc: 'Advanced reasoning & complex coding', icon: '🧠' },
       { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', shortName: 'Flash 1.5', desc: 'Stable & reliable Gemini 1.5', icon: '⚡' },
-      { id: 'gemini-1.5-pro',   name: 'Gemini 1.5 Pro',   shortName: 'Pro 1.5',   desc: 'Gemini 1.5 Pro power', icon: '🧠' },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', shortName: 'Pro 1.5', desc: 'Gemini 1.5 Pro power', icon: '🧠' },
+      { id: 'gemini-flash-latest', name: 'Gemini Flash Latest (Working Fallback)', shortName: 'Flash Latest', desc: 'Working stable alias model', icon: '⚡' },
+      { id: 'gemini-pro-latest', name: 'Gemini Pro Latest (Working Fallback)', shortName: 'Pro Latest', desc: 'Working advanced reasoning alias', icon: '🧠' },
     ],
   },
   {
@@ -34,9 +36,9 @@ const ALL_PROVIDERS = [
     icon: '🤖',
     color: '#10b981',
     models: [
-      { id: 'gpt-4o',      name: 'GPT-4o',      shortName: 'GPT-4o',      desc: 'OpenAI flagship language & vision model', icon: '🤖' },
-      { id: 'gpt-4o-mini', name: 'GPT-4o mini', shortName: 'GPT-4o mini', desc: 'Fast, lightweight & highly capable',       icon: '🔹' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', shortName: 'GPT-3.5', desc: 'Quick & cost-efficient',                  icon: '⚡' },
+      { id: 'gpt-4o', name: 'GPT-4o', shortName: 'GPT-4o', desc: 'OpenAI flagship language & vision model', icon: '🤖' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o mini', shortName: 'GPT-4o mini', desc: 'Fast, lightweight & highly capable', icon: '🔹' },
+      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', shortName: 'GPT-3.5', desc: 'Quick & cost-efficient', icon: '⚡' },
     ],
   },
   {
@@ -46,19 +48,19 @@ const ALL_PROVIDERS = [
     color: '#f59e0b',
     models: [
       { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', shortName: 'Sonnet 3.5', desc: 'Anthropic state-of-the-art precision & writing', icon: '✍️' },
-      { id: 'claude-3-haiku-20240307',    name: 'Claude 3 Haiku',   shortName: 'Haiku 3',    desc: 'Fast & cost-efficient Claude',                  icon: '🎍' },
+      { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', shortName: 'Haiku 3', desc: 'Fast & cost-efficient Claude', icon: '🎍' },
     ],
   },
 ];
 
 const DEFAULT_CONFIG = {
   mcps: [
-    { id: 'gmail',    name: 'Gmail',           desc: 'Read emails & draft replies',       icon: '', apiKey: '', connectionString: 'https://gmail.googleapis.com' },
-    { id: 'calendar', name: 'Google Calendar', desc: 'Read & create calendar events',     icon: '', apiKey: '', connectionString: 'https://www.googleapis.com/calendar/v3' },
-    { id: 'drive',    name: 'Google Drive',    desc: 'Access files & documents',          icon: '', apiKey: '', connectionString: 'https://www.googleapis.com/drive/v3' },
-    { id: 'notion',   name: 'Notion',          desc: 'Read & write Notion pages',         icon: '', apiKey: '', connectionString: 'https://api.notion.com/v1' },
-    { id: 'slack',    name: 'Slack',           desc: 'Send & read messages',              icon: '', apiKey: '', connectionString: 'https://slack.com/api' },
-    { id: 'github',   name: 'GitHub',          desc: 'Access repos & issues',             icon: '', apiKey: '', connectionString: 'https://api.github.com' },
+    { id: 'gmail', name: 'Gmail', desc: 'Read emails & draft replies', icon: '', apiKey: '', connectionString: 'https://gmail.googleapis.com' },
+    { id: 'calendar', name: 'Google Calendar', desc: 'Read & create calendar events', icon: '', apiKey: '', connectionString: 'https://www.googleapis.com/calendar/v3' },
+    { id: 'drive', name: 'Google Drive', desc: 'Access files & documents', icon: '', apiKey: '', connectionString: 'https://www.googleapis.com/drive/v3' },
+    { id: 'notion', name: 'Notion', desc: 'Read & write Notion pages', icon: '', apiKey: '', connectionString: 'https://api.notion.com/v1' },
+    { id: 'slack', name: 'Slack', desc: 'Send & read messages', icon: '', apiKey: '', connectionString: 'https://slack.com/api' },
+    { id: 'github', name: 'GitHub', desc: 'Access repos & issues', icon: '', apiKey: '', connectionString: 'https://api.github.com' },
   ],
   ai: {
     provider: 'gemini',
@@ -83,33 +85,33 @@ const readConfig = () => {
       if (raw.ai && raw.ai.apiKey && !aiMerged.apiKeys[aiMerged.provider]) {
         aiMerged.apiKeys[aiMerged.provider] = raw.ai.apiKey;
       }
-      
+
       let modified = false;
       if (raw.ai && raw.ai.hasOwnProperty('apiKey')) {
         delete aiMerged.apiKey;
         modified = true;
       }
-      
+
       // Seed from process.env if not configured in JSON yet
       if (!aiMerged.apiKeys.gemini && process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here' && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_starting_with_AIza') {
         aiMerged.apiKeys.gemini = process.env.GEMINI_API_KEY;
         modified = true;
       }
-      
+
       configCache = {
         ...DEFAULT_CONFIG, ...raw,
-        ai:      aiMerged,
-        rag:     { ...DEFAULT_CONFIG.rag,     ...raw.rag },
+        ai: aiMerged,
+        rag: { ...DEFAULT_CONFIG.rag, ...raw.rag },
         profile: { ...DEFAULT_CONFIG.profile, ...raw.profile },
       };
-      
+
       if (modified) {
         writeConfig(configCache);
       }
       return configCache;
     }
   } catch (e) { console.error('[admin] config read error:', e.message); }
-  
+
   // If config doesn't exist, build from DEFAULT_CONFIG and seed gemini if available
   let aiMerged = { ...DEFAULT_CONFIG.ai };
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here' && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_starting_with_AIza') {
@@ -131,8 +133,8 @@ const writeConfig = (cfg) => {
 // Helper to apply all stored API keys to process.env (only if not already set)
 const applyApiKeysToEnv = (ai) => {
   const keys = ai.apiKeys || {};
-  if (keys.gemini && !process.env.GEMINI_API_KEY)       process.env.GEMINI_API_KEY    = keys.gemini;
-  if (keys.openai && !process.env.OPENAI_API_KEY)       process.env.OPENAI_API_KEY    = keys.openai;
+  if (keys.gemini && !process.env.GEMINI_API_KEY) process.env.GEMINI_API_KEY = keys.gemini;
+  if (keys.openai && !process.env.OPENAI_API_KEY) process.env.OPENAI_API_KEY = keys.openai;
   if (keys.anthropic && !process.env.ANTHROPIC_API_KEY) process.env.ANTHROPIC_API_KEY = keys.anthropic;
 };
 
@@ -210,7 +212,7 @@ router.get('/config', (_req, res) => {
     success: true,
     data: {
       ...cfg,
-      ai:   { ...cfg.ai,   apiKey: mask(cfg.ai.apiKey) },
+      ai: { ...cfg.ai, apiKey: mask(cfg.ai.apiKey) },
       mcps: cfg.mcps.map(m => ({ ...m, apiKey: mask(m.apiKey) })),
     }
   });
@@ -226,7 +228,7 @@ router.post('/mcps', (req, res) => {
   const { name, desc = '', icon = '', apiKey = '', connectionString = '' } = req.body || {};
   if (!name) return res.status(400).json({ success: false, message: 'Name is required' });
   const cfg = readConfig();
-  const id  = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+  const id = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
   cfg.mcps.push({ id, name, desc, icon, apiKey, connectionString });
   writeConfig(cfg);
   res.json({ success: true, data: cfg.mcps.map(m => ({ ...m, apiKey: mask(m.apiKey) })) });
@@ -264,7 +266,7 @@ router.put('/ai', (req, res) => {
   const cfg = readConfig();
   const { provider, model } = req.body || {};
   if (provider) cfg.ai.provider = provider;
-  if (model)    cfg.ai.model    = model;
+  if (model) cfg.ai.model = model;
   writeConfig(cfg);
   const maskedKeys = {};
   Object.entries(cfg.ai.apiKeys || {}).forEach(([k, v]) => { maskedKeys[k] = mask(v); });

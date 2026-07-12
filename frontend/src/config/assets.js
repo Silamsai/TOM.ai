@@ -23,9 +23,9 @@ export const ASSETS = {
   },
   workflow: {
     steps: [
-      { id: 'connect', label: 'Connect', image: '/assets/workflow/step-1-connect.png', icon: '🔗' },
-      { id: 'chat', label: 'Chat', image: '/assets/workflow/step-2-chat.png', icon: '💬' },
-      { id: 'tasks', label: 'Tasks', image: '/assets/workflow/step-3-tasks.png', icon: '📋' },
+      { id: 'connect', label: 'Connect', image: '/assets/workflow/step-1-connect.png' },
+      { id: 'chat', label: 'Chat', image: '/assets/workflow/step-2-chat.png' },
+      { id: 'tasks', label: 'Tasks', image: '/assets/workflow/step-3-tasks.png' },
     ],
   },
   images: {

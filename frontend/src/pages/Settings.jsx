@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
+import InteractiveLogo from '../components/InteractiveLogo';
 import { ConnectModal } from '../components/ChatSidebar';
 import { getCurrentUser, updateProfile } from '../services/api';
 import {
@@ -24,6 +25,20 @@ import {
   IconBell,
   IconChatHistory,
 } from '../components/icons/UiIcons';
+import {
+  Briefcase,
+  Palette,
+  Flame,
+  Heart,
+  ArrowLeft,
+  Sun,
+  Moon,
+  Link as LinkIcon,
+  User,
+  LogOut,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
 import '../styles/settings.css';
 import '../styles/pages.css';
 import '../styles/components.css';
@@ -44,7 +59,7 @@ const formatDate = (d) => {
 const Settings = () => {
   const navigate = useNavigate();
   const isLoggedIn = !!getToken();
-  const user  = getUser();
+  const user = getUser();
   const guest = getGuestProfile();
   const initials = ((user?.name || guest?.name || 'G')
     .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2));
@@ -334,31 +349,37 @@ const Settings = () => {
         <h3 style={{ marginBottom: '14px', fontSize: '15px', color: 'var(--white)' }}>Assistant Persona & Tone</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
           {[
-            { id: 'professional', label: '💼 Professional & Direct', desc: 'Competent, concise, direct, and structured responses. Ideal for productivity.' },
-            { id: 'creative', label: '🎨 Warm & Creative', desc: 'Expressive, encouraging, highly descriptive vocabulary and analogies.' },
-            { id: 'sarcastic', label: '🌶️ Sarcastic Buddy', desc: 'Playful, dry, witty banter while keeping solutions 100% accurate.' },
-            { id: 'empathetic', label: '❤️ Empathetic Coach', desc: 'Compassionate, gentle, patient, validating and deeply supportive.' }
-          ].map(p => (
-            <div
-              key={p.id}
-              onClick={() => setAiPersona(p.id)}
-              style={{
-                padding: '16px',
-                borderRadius: '12px',
-                border: aiPersona === p.id ? '2px solid #4f46e5' : '1px solid rgba(255,255,255,0.08)',
-                background: aiPersona === p.id ? 'rgba(79,70,229,0.08)' : 'rgba(255,255,255,0.02)',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '6px'
-              }}
-              className="persona-card-option"
-            >
-              <strong style={{ color: aiPersona === p.id ? '#fff' : '#c7d2fe', fontSize: '13.5px' }}>{p.label}</strong>
-              <span style={{ fontSize: '11px', color: 'var(--text-dim)', lineHeight: '1.45' }}>{p.desc}</span>
-            </div>
-          ))}
+            { id: 'professional', label: 'Professional & Direct', Icon: Briefcase, desc: 'Competent, concise, direct, and structured responses. Ideal for productivity.' },
+            { id: 'creative', label: 'Warm & Creative', Icon: Palette, desc: 'Expressive, encouraging, highly descriptive vocabulary and analogies.' },
+            { id: 'sarcastic', label: 'Sarcastic Buddy', Icon: Flame, desc: 'Playful, dry, witty banter while keeping solutions 100% accurate.' },
+            { id: 'empathetic', label: 'Empathetic Coach', Icon: Heart, desc: 'Compassionate, gentle, patient, validating and deeply supportive.' }
+          ].map(p => {
+            const PersonaIcon = p.Icon;
+            return (
+              <div
+                key={p.id}
+                onClick={() => setAiPersona(p.id)}
+                style={{
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: aiPersona === p.id ? '2px solid #4f46e5' : '1px solid rgba(255,255,255,0.08)',
+                  background: aiPersona === p.id ? 'rgba(79,70,229,0.08)' : 'rgba(255,255,255,0.02)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px'
+                }}
+                className="persona-card-option"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: aiPersona === p.id ? '#fff' : '#c7d2fe' }}>
+                  <PersonaIcon size={16} />
+                  <strong style={{ fontSize: '13.5px' }}>{p.label}</strong>
+                </div>
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)', lineHeight: '1.45', marginTop: '4px' }}>{p.desc}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -490,14 +511,12 @@ const Settings = () => {
       {/* ── Settings top navbar ── */}
       <header className="settings-topbar">
         <div className="settings-topbar-left">
-          <Link to="/chat" className="settings-back-btn" title="Back to Chat">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
-            </svg>
+          <Link to="/chat" className="settings-back-btn" title="Back to Chat" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <ArrowLeft size={16} />
             <span>Back</span>
           </Link>
           <div className="settings-topbar-logo">
-            <img src="/images/logo.png" alt="tom.ai" width="24" height="24" style={{ borderRadius: '6px', objectFit: 'contain' }} />
+            <InteractiveLogo width={24} height={24} />
             <span>Settings</span>
           </div>
         </div>
@@ -507,12 +526,9 @@ const Settings = () => {
             className="chat-nav-icon-btn"
             onClick={() => setThemeState(theme === 'dark' ? 'light' : 'dark')}
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            {theme === 'dark' ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            )}
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
           </button>
 
           <button
@@ -520,11 +536,9 @@ const Settings = () => {
             className="chat-topbar-connect-btn"
             title="Connect integrations"
             onClick={() => setConnectOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-            </svg>
+            <LinkIcon size={13} />
             <span>Connect</span>
           </button>
 
@@ -545,13 +559,21 @@ const Settings = () => {
                   <div className="chat-profile-dropdown-email">{user?.email || ''}</div>
                 </div>
                 <div className="chat-profile-dropdown-divider" />
-                <button className="chat-profile-dropdown-item" onClick={() => { setShowProfileDropdown(false); navigate('/settings'); }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  Account Settings
+                <button
+                  className="chat-profile-dropdown-item"
+                  onClick={() => { setShowProfileDropdown(false); navigate('/settings'); }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', width: '100%' }}
+                >
+                  <User size={14} />
+                  <span>Account Settings</span>
                 </button>
-                <button className="chat-profile-dropdown-item chat-profile-dropdown-logout" onClick={handleLogout}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                  Logout
+                <button
+                  className="chat-profile-dropdown-item chat-profile-dropdown-logout"
+                  onClick={handleLogout}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', width: '100%' }}
+                >
+                  <LogOut size={14} />
+                  <span>Logout</span>
                 </button>
               </div>
             )}
@@ -582,8 +604,18 @@ const Settings = () => {
           </nav>
 
           <div className="settings-main">
-            {message && <div className="alert alert-success">{message}</div>}
-            {error && <div className="alert alert-error">{error}</div>}
+            {message && (
+              <div className="alert alert-success" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <CheckCircle size={14} />
+                <span>{message}</span>
+              </div>
+            )}
+            {error && (
+              <div className="alert alert-error" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <AlertCircle size={14} />
+                <span>{error}</span>
+              </div>
+            )}
             {loading ? (
               <LoadingSpinner size="medium" text="Syncing settings with server…" />
             ) : (

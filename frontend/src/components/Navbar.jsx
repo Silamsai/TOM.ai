@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { clearAll, getUser, getGuestProfile } from '../utils/storage';
+import { MessageSquare, CheckSquare, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import AuthModal from './AuthModal';
 import '../styles/components.css';
 
 const getGreeting = (name) => {
   const h = new Date().getHours();
-  const time = h>=5&&h<12?'Good Morning':h>=12&&h<17?'Good Afternoon':h>=17&&h<21?'Good Evening':'Good Night';
+  const time = h >= 5 && h < 12 ? 'Good Morning' : h >= 12 && h < 17 ? 'Good Afternoon' : h >= 17 && h < 21 ? 'Good Evening' : 'Good Night';
   return name ? `${time}, ${name}!` : `${time}!`;
 };
 
@@ -22,34 +23,48 @@ const getGreeting = (name) => {
  *   That's it — the logo updates automatically!
  * ─────────────────────────────────────────────
  */
-const TomLogo = () => (
-  <img
-    src="/images/logo.png"
-    alt="tom.ai logo"
-    width="32"
-    height="32"
-    style={{ borderRadius: '8px', display: 'block', objectFit: 'contain' }}
-    onError={(e) => {
-      // Try SVG fallback
-      if (!e.target.src.includes('logo.svg')) {
-        e.target.src = '/images/logo.svg';
-      } else {
-        e.target.style.display = 'none';
-      }
-    }}
-  />
-);
+const TomLogo = () => {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <img
+      src="/images/logo.png"
+      alt="tom.ai logo"
+      width="32"
+      height="32"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        borderRadius: '8px',
+        display: 'block',
+        objectFit: 'contain',
+        transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.4s ease',
+        transform: hovered ? 'scale(1.1) rotate(3deg)' : 'scale(1) rotate(0deg)',
+        filter: hovered ? 'drop-shadow(0 4px 12px rgba(99, 102, 241, 0.45))' : 'none',
+        cursor: 'pointer'
+      }}
+      onError={(e) => {
+        // Try SVG fallback
+        if (!e.target.src.includes('logo.svg')) {
+          e.target.src = '/images/logo.svg';
+        } else {
+          e.target.style.display = 'none';
+        }
+      }}
+    />
+  );
+};
+
 
 const Navbar = ({ onSidebarToggle }) => {
   const navigate = useNavigate();
-  const user         = getUser();
+  const user = getUser();
   const guestProfile = getGuestProfile();
   const [authOpen, setAuthOpen] = useState(false);
   const [, forceUpdate] = useState(0);
 
   const displayName = user?.name?.split(' ')[0] || guestProfile?.name?.split(' ')[0] || null;
-  const initial     = displayName ? displayName.charAt(0).toUpperCase() : null;
-  const greeting    = getGreeting(displayName);
+  const initial = displayName ? displayName.charAt(0).toUpperCase() : null;
+  const greeting = getGreeting(displayName);
 
   const handleLogout = () => { clearAll(); navigate('/'); };
   const handleAuthSuccess = () => { setAuthOpen(false); forceUpdate(n => n + 1); };
@@ -65,26 +80,26 @@ const Navbar = ({ onSidebarToggle }) => {
 
           {user && (
             <div className="navbar-links">
-              <NavLink to="/chat"  id="nav-chat"  className={({isActive})=>`nav-link ${isActive?'active':''}`}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                Chat
+              <NavLink to="/chat" id="nav-chat" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <MessageSquare size={14} />
+                <span>Chat</span>
               </NavLink>
-              <NavLink to="/todos" id="nav-todos" className={({isActive})=>`nav-link ${isActive?'active':''}`}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-                Tasks
+              <NavLink to="/todos" id="nav-todos" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <CheckSquare size={14} />
+                <span>Tasks</span>
               </NavLink>
-              <NavLink to="/settings" id="nav-settings" className={({isActive})=>`nav-link ${isActive?'active':''}`}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><circle cx="12" cy="12" r="4" /></svg>
-                Settings
+              <NavLink to="/settings" id="nav-settings" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <SettingsIcon size={14} />
+                <span>Settings</span>
               </NavLink>
             </div>
           )}
 
           {!user && (
             <div className="navbar-links">
-              <NavLink to="/settings" id="nav-settings-guest" className={({isActive})=>`nav-link ${isActive?'active':''}`}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><circle cx="12" cy="12" r="4" /></svg>
-                Settings
+              <NavLink to="/settings" id="nav-settings-guest" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <SettingsIcon size={14} />
+                <span>Settings</span>
               </NavLink>
             </div>
           )}
@@ -118,9 +133,9 @@ const Navbar = ({ onSidebarToggle }) => {
               </div>
             )}
             {user ? (
-              <button id="nav-logout" className="btn btn-secondary btn-sm" onClick={handleLogout}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                Logout
+              <button id="nav-logout" className="btn btn-secondary btn-sm" onClick={handleLogout} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <LogOut size={13} />
+                <span>Logout</span>
               </button>
             ) : (
               <button id="nav-signin" className="btn btn-primary btn-sm nav-signin-btn" onClick={() => setAuthOpen(true)}>

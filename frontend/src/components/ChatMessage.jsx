@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatTime } from '../utils/validators';
+import { CornerUpLeft, Copy, FileText, Check, Paperclip } from 'lucide-react';
 import '../styles/components.css';
 import { jsPDF } from 'jspdf';
 
@@ -47,12 +48,12 @@ const CodeBlock = ({ lang, code }) => {
         <button className="msg-code-copy-btn" onClick={handleCopy}>
           {copied ? (
             <>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{marginRight: '4px'}}><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <Check size={12} style={{ marginRight: '4px' }} />
               Copied!
             </>
           ) : (
             <>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{marginRight: '4px'}}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <Copy size={12} style={{ marginRight: '4px' }} />
               Copy
             </>
           )}
@@ -133,17 +134,17 @@ const renderAttachments = (attachments) => {
           const imgSrc = `data:${att.inlineData.mimeType};base64,${att.inlineData.data}`;
           return (
             <div key={i} className="msg-attachment-image-wrap" style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', maxWidth: '320px', maxHeight: '320px' }}>
-              <img 
-                src={imgSrc} 
-                alt={att.fileName || "Uploaded image"} 
-                style={{ width: '100%', height: 'auto', maxHeight: '320px', objectFit: 'contain', display: 'block' }} 
+              <img
+                src={imgSrc}
+                alt={att.fileName || "Uploaded image"}
+                style={{ width: '100%', height: 'auto', maxHeight: '320px', objectFit: 'contain', display: 'block' }}
               />
             </div>
           );
         } else {
           return (
             <div key={i} className="msg-attachment-file-pill" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '100px', fontSize: '12px', color: '#a5f3fc', width: 'fit-content' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              <Paperclip size={12} />
               <span>{att.fileName || 'Attached file'}</span>
             </div>
           );
@@ -190,7 +191,7 @@ const ChatMessage = ({ message, type, timestamp, userPicture, userName, onReply,
         .replace(/`(.*?)`/g, '$1');
 
       const splitText = doc.splitTextToSize(cleanMessage, 180);
-      
+
       let y = 36;
       const pageHeight = 275;
 
@@ -211,7 +212,7 @@ const ChatMessage = ({ message, type, timestamp, userPicture, userName, onReply,
   };
 
   return (
-    <div 
+    <div
       className={`message-row ${isUser ? 'user' : 'bot'}`}
       onMouseEnter={() => React_setIsHovered(true)}
       onMouseLeave={() => React_setIsHovered(false)}
@@ -231,36 +232,36 @@ const ChatMessage = ({ message, type, timestamp, userPicture, userName, onReply,
           {isUser ? message : renderMarkdown(message)}
           {renderAttachments(attachments)}
         </div>
-        <div className="message-meta-wrap" style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px'}}>
-          {timestamp && <div className="message-meta" style={{marginTop: 0}}>{formatTime(timestamp)}</div>}
+        <div className="message-meta-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+          {timestamp && <div className="message-meta" style={{ marginTop: 0 }}>{formatTime(timestamp)}</div>}
           {isHovered && onReply && (
-            <button 
-              onClick={() => onReply(message)} 
-              className="msg-reply-btn" 
-              style={{background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '12px', padding: 0}}
+            <button
+              onClick={() => onReply(message)}
+              className="msg-reply-btn"
+              style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
               title="Reply"
             >
-              ↩
+              <CornerUpLeft size={12} />
             </button>
           )}
           {isHovered && (
-            <button 
-              onClick={() => navigator.clipboard.writeText(message)} 
-              className="msg-copy-btn" 
-              style={{background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 0}}
+            <button
+              onClick={() => navigator.clipboard.writeText(message)}
+              className="msg-copy-btn"
+              style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
               title="Copy"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <Copy size={12} />
             </button>
           )}
           {isHovered && !isUser && (
-            <button 
-              onClick={downloadPDF} 
-              className="msg-pdf-btn" 
-              style={{background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center'}}
+            <button
+              onClick={downloadPDF}
+              className="msg-pdf-btn"
+              style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
               title="Export as PDF"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              <FileText size={12} />
             </button>
           )}
         </div>

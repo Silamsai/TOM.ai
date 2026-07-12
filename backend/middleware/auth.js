@@ -17,6 +17,14 @@ const authMiddleware = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Admin tokens are signed with a different secret and won't reach here,
+    // but guard against tokens with role:'admin' that somehow pass
+    if (decoded.role === 'admin') {
+      return res.status(401).json({ success: false, message: 'Admin token cannot access user routes.' });
+    }
+    if (!decoded.userId) {
+      return res.status(401).json({ success: false, message: ERRORS.INVALID_TOKEN });
+    }
     req.userId = decoded.userId;
     req.userEmail = decoded.email;
     next();

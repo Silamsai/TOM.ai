@@ -23,17 +23,17 @@ let mcpTools = [];
 
 async function getMCPClient() {
   if (mcpClientInstance) return mcpClientInstance;
-  
+
   try {
     const transport = new StdioClientTransport({
       command: 'node',
       args: [mcpServerPath]
     });
-    
+
     const client = new Client({ name: 'tom-ai-backend', version: '1.0.0' }, { capabilities: {} });
     await client.connect(transport);
     mcpClientInstance = client;
-    
+
     const toolsResponse = await client.listTools();
     mcpTools = toolsResponse.tools;
     console.log(`[MCP] Connected to Gmail MCP. Found ${mcpTools.length} tools.`);
@@ -42,7 +42,7 @@ async function getMCPClient() {
     // Don't crash the whole app if MCP fails, just return null so Gemini runs without it
     mcpClientInstance = null;
   }
-  
+
   return mcpClientInstance;
 }
 
@@ -86,14 +86,14 @@ const callOpenAI = async (model, userMessage, history, systemPrompt) => {
   const messages = [
     { role: 'system', content: systemPrompt }
   ];
-  
+
   history.forEach(h => {
     messages.push({ role: 'user', content: h.userMessage || '' });
     messages.push({ role: 'assistant', content: h.claudeResponse || '' });
   });
 
   const textMsg = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
-  
+
   if (typeof userMessage === 'object' && userMessage.attachments && userMessage.attachments.length > 0) {
     const userContent = [
       { type: 'text', text: textMsg }
@@ -138,14 +138,14 @@ const callAnthropic = async (model, userMessage, history, systemPrompt) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   const messages = [];
-  
+
   history.forEach(h => {
     messages.push({ role: 'user', content: h.userMessage || '' });
     messages.push({ role: 'assistant', content: h.claudeResponse || '' });
   });
 
   const textMsg = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
-  
+
   if (typeof userMessage === 'object' && userMessage.attachments && userMessage.attachments.length > 0) {
     const userContent = [
       { type: 'text', text: textMsg }
@@ -195,7 +195,7 @@ const processTaskCreation = async (userId, responseText, user) => {
 
   let cleanText = responseText.replace(/<create_task>[\s\S]*?<\/create_task>/g, '').trim();
   const jsonStr = match[1].trim();
-  
+
   try {
     const data = JSON.parse(jsonStr);
     if (!data.taskName) {
@@ -266,7 +266,7 @@ const sendMessage = async (userId, userMessage, user, selectedModel = 'gemini-2.
 
     // Reverse history to chronological order (oldest to newest)
     const chronologicalHistory = rawHistory.reverse();
-    
+
     formattedHistory = chronologicalHistory.map(h => [
       { role: 'user', parts: [{ text: h.userMessage || '' }] },
       { role: 'model', parts: [{ text: h.claudeResponse || '' }] }
@@ -283,6 +283,8 @@ const sendMessage = async (userId, userMessage, user, selectedModel = 'gemini-2.
   // Standard fallback models
   if (!models.includes('gemini-2.5-flash')) models.push('gemini-2.5-flash');
   if (!models.includes('gemini-1.5-flash')) models.push('gemini-1.5-flash');
+  if (!models.includes('gemini-flash-latest')) models.push('gemini-flash-latest');
+  if (!models.includes('gemini-pro-latest')) models.push('gemini-pro-latest');
 
   // Retrieve relevant personal context (RAG)
   const userText = typeof userMessage === 'object' && userMessage.text ? userMessage.text : String(userMessage);
@@ -430,11 +432,11 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
   for (const modelName of models) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        const modelConfig = { 
+        const modelConfig = {
           model: modelName,
           systemInstruction: systemPrompt,
         };
-        
+
         if (geminiTools.length > 0) {
           modelConfig.tools = [{ functionDeclarations: geminiTools }];
         }
@@ -445,7 +447,7 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
         const chat = model.startChat({
           history: formattedHistory
         });
-        
+
         let contentParts = [];
         if (typeof userMessage === 'object') {
           const text = userMessage.text || '';
@@ -466,29 +468,29 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
         }
 
         let result = await chat.sendMessage(contentParts);
-        
-        let functionCalls = result.response.functionCalls && typeof result.response.functionCalls === 'function' 
-          ? result.response.functionCalls() 
+
+        let functionCalls = result.response.functionCalls && typeof result.response.functionCalls === 'function'
+          ? result.response.functionCalls()
           : result.response.functionCalls;
-        
+
         let loopCount = 0;
-        
+
         // Handle tool calls recursively (up to 5 depths)
         while (functionCalls && functionCalls.length > 0 && loopCount < 5) {
           loopCount++;
           const functionResponses = [];
-          
+
           for (const call of functionCalls) {
             console.log(`[Gemini] 🛠️ Calling MCP Tool: ${call.name} with args:`, call.args);
-            
+
             try {
               if (!mcpClientInstance) throw new Error("MCP Client not connected");
-              
+
               const mcpResponse = await mcpClientInstance.callTool({
                 name: call.name,
                 arguments: call.args
               });
-              
+
               let responseObj;
               if (mcpResponse.isError) {
                 responseObj = { error: mcpResponse.content[0].text };
@@ -499,7 +501,7 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
                   responseObj = { result: mcpResponse.content[0].text };
                 }
               }
-              
+
               functionResponses.push({
                 functionResponse: {
                   name: call.name,
@@ -516,19 +518,19 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
               });
             }
           }
-          
+
           // Send tool results back to Gemini
           result = await chat.sendMessage(functionResponses);
-          functionCalls = result.response.functionCalls && typeof result.response.functionCalls === 'function' 
-            ? result.response.functionCalls() 
+          functionCalls = result.response.functionCalls && typeof result.response.functionCalls === 'function'
+            ? result.response.functionCalls()
             : result.response.functionCalls;
         }
 
         let text = "";
         try {
           text = result.response.text();
-        } catch (e) {}
-        
+        } catch (e) { }
+
         if (!text || text.trim() === '') {
           text = "I checked your request but didn't have a verbal response. (Action completed)";
         }
@@ -564,7 +566,7 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
 
   // All models failed — use local fallback
   console.warn('[Gemini] All models failed, using local fallback. Error:', lastError?.message?.substring(0, 100));
-  
+
   const lastErrorMsg = lastError?.message || '';
   if (lastErrorMsg.includes('leaked') || lastErrorMsg.includes('API_KEY_INVALID') || lastErrorMsg.includes('API key not valid') || lastErrorMsg.includes('key was reported as leaked') || lastErrorMsg.includes('PERMISSION_DENIED')) {
     return {

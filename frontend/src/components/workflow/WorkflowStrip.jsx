@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Link as LinkIcon, MessageSquare, CheckSquare } from 'lucide-react';
 import { ASSETS, FEATURES } from '../../config/assets';
 import '../../styles/workflow.css';
 
@@ -48,7 +49,15 @@ const WorkflowStrip = ({ activeIndex = 0, layout = 'horizontal', className = '' 
                 animate={active && !reduced ? { scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] } : {}}
                 transition={{ duration: 2.5, repeat: Infinity }}
               />
-              <div className="workflow-step__icon" aria-hidden="true">{step.icon}</div>
+              <div
+                className="workflow-step__icon"
+                aria-hidden="true"
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                {step.id === 'connect' && <LinkIcon size={16} />}
+                {step.id === 'chat' && <MessageSquare size={16} />}
+                {step.id === 'tasks' && <CheckSquare size={16} />}
+              </div>
               <img
                 className="workflow-step__img"
                 src={step.image}

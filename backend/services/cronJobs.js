@@ -1,10 +1,11 @@
 const cron = require('node-cron');
 const Task = require('../models/Task');
+const Reminder = require('../models/Reminder');
 const { sendTaskReminderEmail } = require('./emailService');
 
 const startCronJobs = () => {
   console.log('⏰ Starting Cron Jobs for Task Reminders...');
-  
+
   // Run every minute at the 0th second
   cron.schedule('* * * * *', async () => {
     try {
@@ -34,7 +35,7 @@ const startCronJobs = () => {
 
       for (const task of dueTasks) {
         if (!task.userId || !task.userId.email) continue;
-        
+
         try {
           await sendTaskReminderEmail(task.userId.email, task);
           task.notified = true;
@@ -54,14 +55,13 @@ const startCronJobs = () => {
     try {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
+
       // Also clean up associated reminders before deleting tasks
       const oldTasks = await Task.find({ createdAt: { $lt: sevenDaysAgo } }, '_id');
       const oldTaskIds = oldTasks.map(t => t._id);
 
       if (oldTaskIds.length > 0) {
-        const mongoose = require('mongoose');
-        await mongoose.model('Reminder').deleteMany({ taskId: { $in: oldTaskIds } });
+        await Reminder.deleteMany({ taskId: { $in: oldTaskIds } });
         const result = await Task.deleteMany({ _id: { $in: oldTaskIds } });
         console.log(`[Cron] Cleaned up ${result.deletedCount} old tasks (older than 7 days).`);
       }

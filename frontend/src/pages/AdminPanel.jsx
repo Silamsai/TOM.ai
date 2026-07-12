@@ -1,14 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  Plug,
+  Settings,
+  HelpCircle,
+  Terminal,
+  Database,
+  Key,
+  Lock,
+  User as UserIcon,
+  LogOut,
+  Sparkles,
+  Brain,
+  Info,
+  Plus,
+  Trash2,
+  Edit,
+  LayoutDashboard,
+  CheckCircle,
+  AlertTriangle,
+  Cpu,
+  X,
+  BookOpen
+} from 'lucide-react';
 import '../styles/admin.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const API = `${API_BASE_URL}/admin`;
 const getToken = () => localStorage.getItem('tom_admin_token');
-const authHdr  = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
+const authHdr = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 
 const renderIcon = (icon) => {
-  if (!icon) return <span>🔌</span>;
+  if (!icon) return <Plug size={14} />;
+  if (typeof icon !== 'string') return icon;
   const t = icon.trim();
+  if (t === '🔌') return <Plug size={14} />;
   if (t.startsWith('<svg')) return <span className="mcp-svg-wrapper" dangerouslySetInnerHTML={{ __html: t }} />;
   if (t.startsWith('data:') || t.startsWith('http') || t.startsWith('/')) return <img src={t} alt="" />;
   return <span>{t}</span>;
@@ -56,12 +81,12 @@ function LoginScreen({ onLogin }) {
         <div className="adm-login-title">Admin Panel</div>
         <div className="adm-login-sub">Sign in with your admin credentials</div>
         <form onSubmit={submit}>
-          <div className="adm-field"><label className="adm-label">Username</label><input className="adm-input" value={u} onChange={e=>setU(e.target.value)} placeholder="admin@tomai.com" required /></div>
-          <div className="adm-field"><label className="adm-label">Password</label><input className="adm-input" type="password" value={p} onChange={e=>setP(e.target.value)} placeholder="••••••••" required /></div>
+          <div className="adm-field"><label className="adm-label">Username</label><input className="adm-input" value={u} onChange={e => setU(e.target.value)} placeholder="admin@tomai.com" required /></div>
+          <div className="adm-field"><label className="adm-label">Password</label><input className="adm-input" type="password" value={p} onChange={e => setP(e.target.value)} placeholder="••••••••" required /></div>
           {err && <div className="adm-error">{err}</div>}
-          <button className="adm-btn adm-btn-primary adm-btn-full" style={{marginTop:18}} disabled={busy}>{busy ? 'Signing in…' : 'Sign In'}</button>
+          <button className="adm-btn adm-btn-primary adm-btn-full" style={{ marginTop: 18 }} disabled={busy}>{busy ? 'Signing in…' : 'Sign In'}</button>
         </form>
-        <div style={{textAlign:'center',marginTop:16,fontSize:12,color:'var(--adm-dim)'}}>Default: admin@tomai.com / Admin@123</div>
+        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: 'var(--adm-dim)' }}>Default: admin@tomai.com / Admin@123</div>
       </div>
     </div>
   );
@@ -71,15 +96,15 @@ function LoginScreen({ onLogin }) {
 function MCPsTab({ toast }) {
   const [mcps, setMcps] = useState([]);
   const [modal, setModal] = useState(null); // null | 'add' | {mcp obj}
-  const [form, setForm] = useState({ name:'', desc:'', icon:'', apiKey:'', connectionString:'' });
+  const [form, setForm] = useState({ name: '', desc: '', icon: '', apiKey: '', connectionString: '' });
   const [busy, setBusy] = useState(false);
   const fileRef = useRef();
 
-  const load = () => fetch(`${API}/mcps`, { headers: authHdr() }).then(r=>r.json()).then(d=>{ if(d.success) setMcps(d.data); });
+  const load = () => fetch(`${API}/mcps`, { headers: authHdr() }).then(r => r.json()).then(d => { if (d.success) setMcps(d.data); });
   useEffect(() => { load(); }, []);
 
-  const openAdd = () => { setForm({ name:'', desc:'', icon:'', apiKey:'', connectionString:'' }); setModal('add'); };
-  const openEdit = (m) => { setForm({ name:m.name, desc:m.desc, icon:m.icon, apiKey:m.apiKey, connectionString:m.connectionString }); setModal(m); };
+  const openAdd = () => { setForm({ name: '', desc: '', icon: '', apiKey: '', connectionString: '' }); setModal('add'); };
+  const openEdit = (m) => { setForm({ name: m.name, desc: m.desc, icon: m.icon, apiKey: m.apiKey, connectionString: m.connectionString }); setModal(m); };
 
   const handleFile = (e) => {
     const f = e.target.files[0]; if (!f) return;
@@ -92,10 +117,10 @@ function MCPsTab({ toast }) {
     setBusy(true);
     try {
       if (modal === 'add') {
-        await fetch(`${API}/mcps`, { method:'POST', headers: authHdr(), body: JSON.stringify(form) });
+        await fetch(`${API}/mcps`, { method: 'POST', headers: authHdr(), body: JSON.stringify(form) });
         toast('MCP added', 'success');
       } else {
-        await fetch(`${API}/mcps/${modal.id}`, { method:'PUT', headers: authHdr(), body: JSON.stringify(form) });
+        await fetch(`${API}/mcps/${modal.id}`, { method: 'PUT', headers: authHdr(), body: JSON.stringify(form) });
         toast('MCP updated', 'success');
       }
       await load(); setModal(null);
@@ -105,15 +130,17 @@ function MCPsTab({ toast }) {
 
   const del = async (id) => {
     if (!window.confirm('Delete this MCP?')) return;
-    await fetch(`${API}/mcps/${id}`, { method:'DELETE', headers: authHdr() });
+    await fetch(`${API}/mcps/${id}`, { method: 'DELETE', headers: authHdr() });
     toast('MCP removed', 'success'); load();
   };
 
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div><div className="adm-section-title">MCP Integrations</div><div className="adm-section-sub">Manage connected applications and their API credentials</div></div>
-        <button className="adm-btn adm-btn-primary" onClick={openAdd}>+ Add MCP</button>
+        <button className="adm-btn adm-btn-primary" onClick={openAdd} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <Plus size={14} /> Add MCP
+        </button>
       </div>
       <div className="adm-mcp-grid">
         {mcps.map(m => (
@@ -124,8 +151,12 @@ function MCPsTab({ toast }) {
               <div className="adm-mcp-desc">{m.desc || 'No description'}</div>
               {m.connectionString && <div className="adm-mcp-conn">{m.connectionString}</div>}
               <div className="adm-mcp-actions">
-                <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={()=>openEdit(m)}>Edit</button>
-                <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={()=>del(m.id)}>Delete</button>
+                <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={() => openEdit(m)} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Edit size={12} /> Edit
+                </button>
+                <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={() => del(m.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Trash2 size={12} /> Delete
+                </button>
               </div>
             </div>
           </div>
@@ -133,29 +164,31 @@ function MCPsTab({ toast }) {
       </div>
 
       {modal && (
-        <div className="adm-overlay" onClick={()=>setModal(null)}>
-          <div className="adm-modal" onClick={e=>e.stopPropagation()}>
+        <div className="adm-overlay" onClick={() => setModal(null)}>
+          <div className="adm-modal" onClick={e => e.stopPropagation()}>
             <div className="adm-modal-header">
-              <div className="adm-modal-title">{modal==='add'?'Add New MCP':'Edit MCP'}</div>
-              <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={()=>setModal(null)}>✕</button>
+              <div className="adm-modal-title">{modal === 'add' ? 'Add New MCP' : 'Edit MCP'}</div>
+              <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={() => setModal(null)} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <X size={14} />
+              </button>
             </div>
             <div className="adm-modal-body">
               <div className="adm-logo-upload">
-                <div className="adm-logo-preview">{form.icon ? renderIcon(form.icon) : <span>🔌</span>}</div>
+                <div className="adm-logo-preview">{form.icon ? renderIcon(form.icon) : <Plug size={20} />}</div>
                 <div>
-                  <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleFile} />
-                  <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={()=>fileRef.current.click()}>Upload Logo</button>
+                  <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+                  <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={() => fileRef.current.click()}>Upload Logo</button>
                   <div className="adm-upload-hint">Or paste SVG / URL below</div>
                 </div>
               </div>
-              <div className="adm-field"><label className="adm-label">Icon (SVG / URL / emoji)</label><input className="adm-input" value={form.icon} onChange={e=>setForm(p=>({...p,icon:e.target.value}))} placeholder="<svg>... or https://... or 🔌" /></div>
-              <div className="adm-field"><label className="adm-label">Name *</label><input className="adm-input" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Gmail" /></div>
-              <div className="adm-field"><label className="adm-label">Description</label><input className="adm-input" value={form.desc} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} placeholder="Read emails & draft replies" /></div>
-              <div className="adm-field"><label className="adm-label">API / Connection String</label><input className="adm-input" value={form.connectionString} onChange={e=>setForm(p=>({...p,connectionString:e.target.value}))} placeholder="https://api.example.com" /></div>
-              <div className="adm-field"><label className="adm-label">API Key</label><input className="adm-input" type="password" value={form.apiKey} onChange={e=>setForm(p=>({...p,apiKey:e.target.value}))} placeholder="Enter API key…" /></div>
+              <div className="adm-field"><label className="adm-label">Icon (SVG / URL)</label><input className="adm-input" value={form.icon} onChange={e => setForm(p => ({ ...p, icon: e.target.value }))} placeholder="<svg>... or https://... or Plug icon" /></div>
+              <div className="adm-field"><label className="adm-label">Name *</label><input className="adm-input" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Gmail" /></div>
+              <div className="adm-field"><label className="adm-label">Description</label><input className="adm-input" value={form.desc} onChange={e => setForm(p => ({ ...p, desc: e.target.value }))} placeholder="Read emails & draft replies" /></div>
+              <div className="adm-field"><label className="adm-label">API / Connection String</label><input className="adm-input" value={form.connectionString} onChange={e => setForm(p => ({ ...p, connectionString: e.target.value }))} placeholder="https://api.example.com" /></div>
+              <div className="adm-field"><label className="adm-label">API Key</label><input className="adm-input" type="password" value={form.apiKey} onChange={e => setForm(p => ({ ...p, apiKey: e.target.value }))} placeholder="Enter API key…" /></div>
               <div className="adm-modal-actions">
-                <button className="adm-btn adm-btn-secondary" onClick={()=>setModal(null)}>Cancel</button>
-                <button className="adm-btn adm-btn-primary" onClick={save} disabled={busy||!form.name}>{busy?'Saving…':'Save'}</button>
+                <button className="adm-btn adm-btn-secondary" onClick={() => setModal(null)}>Cancel</button>
+                <button className="adm-btn adm-btn-primary" onClick={save} disabled={busy || !form.name}>{busy ? 'Saving…' : 'Save'}</button>
               </div>
             </div>
           </div>
@@ -177,10 +210,13 @@ function AITab() {
 
   const activeProvider = (ai.allProviders || []).find(p => p.id === ai.provider);
 
-  const providerIcons = {
-    gemini: '✨',
-    openai: '🤖',
-    anthropic: '🧠',
+  const getProviderIcon = (id, size = 16) => {
+    switch (id) {
+      case 'gemini': return <Sparkles size={size} />;
+      case 'openai': return <Brain size={size} />;
+      case 'anthropic': return <Cpu size={size} />;
+      default: return <Brain size={size} />;
+    }
   };
 
   const providerColors = {
@@ -206,8 +242,8 @@ function AITab() {
         position: 'relative',
         overflow: 'hidden',
       }}>
-        <div style={{ position: 'absolute', right: 20, top: 16, fontSize: 64, opacity: 0.18, lineHeight: 1 }}>
-          {providerIcons[ai.provider] || '🤖'}
+        <div style={{ position: 'absolute', right: 20, top: 16, opacity: 0.18, pointerEvents: 'none' }}>
+          {getProviderIcon(ai.provider, 64)}
         </div>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, opacity: 0.8, textTransform: 'uppercase', marginBottom: 8 }}>
           Active AI Provider
@@ -230,7 +266,9 @@ function AITab() {
 
       {/* Info Note */}
       <div className="adm-card" style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '18px 20px' }}>
-        <div style={{ fontSize: 24, lineHeight: 1 }}>ℹ️</div>
+        <div style={{ color: 'var(--adm-dim)', display: 'inline-flex', alignItems: 'center', marginTop: 3 }}>
+          <Info size={24} />
+        </div>
         <div>
           <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>API Key Management</div>
           <div style={{ fontSize: 13, color: 'var(--adm-dim)', lineHeight: 1.6 }}>
@@ -242,9 +280,10 @@ function AITab() {
             target="_blank"
             rel="noopener noreferrer"
             className="adm-btn adm-btn-secondary adm-btn-sm"
-            style={{ marginTop: 12, display: 'inline-block', textDecoration: 'none' }}
+            style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
           >
-            🔑 Get API Key from Google AI Studio ↗
+            <Key size={12} />
+            <span>Get API Key from Google AI Studio</span>
           </a>
         </div>
       </div>
@@ -264,7 +303,7 @@ function AITab() {
             opacity: p.id === ai.provider ? 1 : 0.6,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 20 }}>{providerIcons[p.id] || '🤖'}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center' }}>{getProviderIcon(p.id, 20)}</span>
               <span style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</span>
               {p.id === ai.provider && (
                 <span className="adm-ai-active-badge" style={{ marginLeft: 'auto' }}>ACTIVE</span>
@@ -282,10 +321,10 @@ function AITab() {
 
 /* ══ RAG Tab ══════════════════════════════════════════════════════════ */
 function RAGTab({ toast }) {
-  const [rag, setRag] = useState({ enabled:false, source:'', chunkSize:1000, overlap:200 });
+  const [rag, setRag] = useState({ enabled: false, source: '', chunkSize: 1000, overlap: 200 });
   const [busy, setBusy] = useState(false);
-  useEffect(() => { fetch(`${API}/rag`,{headers:authHdr()}).then(r=>r.json()).then(d=>{ if(d.success) setRag(d.data); }); }, []);
-  const save = async () => { setBusy(true); await fetch(`${API}/rag`,{method:'PUT',headers:authHdr(),body:JSON.stringify(rag)}); toast('RAG settings saved','success'); setBusy(false); };
+  useEffect(() => { fetch(`${API}/rag`, { headers: authHdr() }).then(r => r.json()).then(d => { if (d.success) setRag(d.data); }); }, []);
+  const save = async () => { setBusy(true); await fetch(`${API}/rag`, { method: 'PUT', headers: authHdr(), body: JSON.stringify(rag) }); toast('RAG settings saved', 'success'); setBusy(false); };
   return (
     <div>
       <div className="adm-section-title">RAG — Knowledge Base</div>
@@ -294,16 +333,16 @@ function RAGTab({ toast }) {
         <div className="adm-toggle-row">
           <div><div className="adm-toggle-label">Enable RAG</div><div className="adm-toggle-sub">Let TOM.AI query your knowledge base</div></div>
           <label className="adm-toggle">
-            <input type="checkbox" checked={rag.enabled} onChange={e=>setRag(r=>({...r,enabled:e.target.checked}))} />
-            <div className="adm-toggle-track"/><div className="adm-toggle-thumb"/>
+            <input type="checkbox" checked={rag.enabled} onChange={e => setRag(r => ({ ...r, enabled: e.target.checked }))} />
+            <div className="adm-toggle-track" /><div className="adm-toggle-thumb" />
           </label>
         </div>
-        <div className="adm-field" style={{marginTop:16}}><label className="adm-label">Knowledge Source URL / Path</label><input className="adm-input" value={rag.source} onChange={e=>setRag(r=>({...r,source:e.target.value}))} placeholder="https://docs.example.com or /path/to/docs" /></div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-          <div className="adm-field"><label className="adm-label">Chunk Size</label><input className="adm-input" type="number" value={rag.chunkSize} onChange={e=>setRag(r=>({...r,chunkSize:+e.target.value}))} /></div>
-          <div className="adm-field"><label className="adm-label">Overlap</label><input className="adm-input" type="number" value={rag.overlap} onChange={e=>setRag(r=>({...r,overlap:+e.target.value}))} /></div>
+        <div className="adm-field" style={{ marginTop: 16 }}><label className="adm-label">Knowledge Source URL / Path</label><input className="adm-input" value={rag.source} onChange={e => setRag(r => ({ ...r, source: e.target.value }))} placeholder="https://docs.example.com or /path/to/docs" /></div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="adm-field"><label className="adm-label">Chunk Size</label><input className="adm-input" type="number" value={rag.chunkSize} onChange={e => setRag(r => ({ ...r, chunkSize: +e.target.value }))} /></div>
+          <div className="adm-field"><label className="adm-label">Overlap</label><input className="adm-input" type="number" value={rag.overlap} onChange={e => setRag(r => ({ ...r, overlap: +e.target.value }))} /></div>
         </div>
-        <button className="adm-btn adm-btn-primary" onClick={save} disabled={busy}>{busy?'Saving…':'Save RAG Config'}</button>
+        <button className="adm-btn adm-btn-primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save RAG Config'}</button>
       </div>
     </div>
   );
@@ -311,17 +350,17 @@ function RAGTab({ toast }) {
 
 /* ══ Profile Tab ══════════════════════════════════════════════════════ */
 function ProfileTab({ toast }) {
-  const [prof, setProf] = useState({ adminName:'Admin', adminEmail:'', appName:'TOM.AI' });
-  const [pwd, setPwd] = useState({ current:'', next:'', confirm:'' });
+  const [prof, setProf] = useState({ adminName: 'Admin', adminEmail: '', appName: 'TOM.AI' });
+  const [pwd, setPwd] = useState({ current: '', next: '', confirm: '' });
   const [busy, setBusy] = useState(false);
-  useEffect(() => { fetch(`${API}/profile`,{headers:authHdr()}).then(r=>r.json()).then(d=>{ if(d.success) setProf(d.data); }); }, []);
+  useEffect(() => { fetch(`${API}/profile`, { headers: authHdr() }).then(r => r.json()).then(d => { if (d.success) setProf(d.data); }); }, []);
 
-  const saveProf = async () => { setBusy(true); await fetch(`${API}/profile`,{method:'PUT',headers:authHdr(),body:JSON.stringify(prof)}); toast('Profile saved','success'); setBusy(false); };
+  const saveProf = async () => { setBusy(true); await fetch(`${API}/profile`, { method: 'PUT', headers: authHdr(), body: JSON.stringify(prof) }); toast('Profile saved', 'success'); setBusy(false); };
   const changePwd = async () => {
-    if (pwd.next !== pwd.confirm) { toast('Passwords do not match','error'); return; }
+    if (pwd.next !== pwd.confirm) { toast('Passwords do not match', 'error'); return; }
     setBusy(true);
-    const r = await fetch(`${API}/change-password`,{method:'PUT',headers:authHdr(),body:JSON.stringify({currentPassword:pwd.current,newPassword:pwd.next})});
-    const d = await r.json(); if(d.success) { toast('Password changed','success'); setPwd({current:'',next:'',confirm:''}); } else toast(d.message,'error');
+    const r = await fetch(`${API}/change-password`, { method: 'PUT', headers: authHdr(), body: JSON.stringify({ currentPassword: pwd.current, newPassword: pwd.next }) });
+    const d = await r.json(); if (d.success) { toast('Password changed', 'success'); setPwd({ current: '', next: '', confirm: '' }); } else toast(d.message, 'error');
     setBusy(false);
   };
 
@@ -329,18 +368,18 @@ function ProfileTab({ toast }) {
     <div>
       <div className="adm-section-title">Admin Profile</div>
       <div className="adm-section-sub">Update your admin details and app branding</div>
-      <div className="adm-card" style={{marginBottom:16}}>
-        <div style={{fontWeight:600,marginBottom:14}}>Profile Info</div>
-        <div className="adm-field"><label className="adm-label">Admin Name</label><input className="adm-input" value={prof.adminName} onChange={e=>setProf(p=>({...p,adminName:e.target.value}))} /></div>
-        <div className="adm-field"><label className="adm-label">Email</label><input className="adm-input" type="email" value={prof.adminEmail} onChange={e=>setProf(p=>({...p,adminEmail:e.target.value}))} /></div>
-        <div className="adm-field"><label className="adm-label">App Name</label><input className="adm-input" value={prof.appName} onChange={e=>setProf(p=>({...p,appName:e.target.value}))} /></div>
+      <div className="adm-card" style={{ marginBottom: 16 }}>
+        <div style={{ fontWeight: 600, marginBottom: 14 }}>Profile Info</div>
+        <div className="adm-field"><label className="adm-label">Admin Name</label><input className="adm-input" value={prof.adminName} onChange={e => setProf(p => ({ ...p, adminName: e.target.value }))} /></div>
+        <div className="adm-field"><label className="adm-label">Email</label><input className="adm-input" type="email" value={prof.adminEmail} onChange={e => setProf(p => ({ ...p, adminEmail: e.target.value }))} /></div>
+        <div className="adm-field"><label className="adm-label">App Name</label><input className="adm-input" value={prof.appName} onChange={e => setProf(p => ({ ...p, appName: e.target.value }))} /></div>
         <button className="adm-btn adm-btn-primary" onClick={saveProf} disabled={busy}>Save Profile</button>
       </div>
       <div className="adm-card">
-        <div style={{fontWeight:600,marginBottom:14}}>Change Password</div>
-        <div className="adm-field"><label className="adm-label">Current Password</label><input className="adm-input" type="password" value={pwd.current} onChange={e=>setPwd(p=>({...p,current:e.target.value}))} /></div>
-        <div className="adm-field"><label className="adm-label">New Password</label><input className="adm-input" type="password" value={pwd.next} onChange={e=>setPwd(p=>({...p,next:e.target.value}))} /></div>
-        <div className="adm-field"><label className="adm-label">Confirm Password</label><input className="adm-input" type="password" value={pwd.confirm} onChange={e=>setPwd(p=>({...p,confirm:e.target.value}))} /></div>
+        <div style={{ fontWeight: 600, marginBottom: 14 }}>Change Password</div>
+        <div className="adm-field"><label className="adm-label">Current Password</label><input className="adm-input" type="password" value={pwd.current} onChange={e => setPwd(p => ({ ...p, current: e.target.value }))} /></div>
+        <div className="adm-field"><label className="adm-label">New Password</label><input className="adm-input" type="password" value={pwd.next} onChange={e => setPwd(p => ({ ...p, next: e.target.value }))} /></div>
+        <div className="adm-field"><label className="adm-label">Confirm Password</label><input className="adm-input" type="password" value={pwd.confirm} onChange={e => setPwd(p => ({ ...p, confirm: e.target.value }))} /></div>
         <button className="adm-btn adm-btn-secondary" onClick={changePwd} disabled={busy}>Change Password</button>
       </div>
     </div>
@@ -349,12 +388,12 @@ function ProfileTab({ toast }) {
 
 /* ══ Dashboard ═══════════════════════════════════════════════════════ */
 function DashboardTab() {
-  const [stats, setStats] = useState({ mcps:0, ai:'', model:'', aiKeys:0 });
+  const [stats, setStats] = useState({ mcps: 0, ai: '', model: '', aiKeys: 0 });
   useEffect(() => {
     Promise.all([
-      fetch(`${API}/mcps`,{headers:authHdr()}).then(r=>r.json()),
-      fetch(`${API}/ai`,{headers:authHdr()}).then(r=>r.json()),
-    ]).then(([m,a]) => setStats({ mcps: m.data?.length||0, ai: a.data?.provider||'', model: a.data?.model||'', aiKeys: Object.keys(a.data?.apiKeys||{}).length }));
+      fetch(`${API}/mcps`, { headers: authHdr() }).then(r => r.json()),
+      fetch(`${API}/ai`, { headers: authHdr() }).then(r => r.json()),
+    ]).then(([m, a]) => setStats({ mcps: m.data?.length || 0, ai: a.data?.provider || '', model: a.data?.model || '', aiKeys: Object.keys(a.data?.apiKeys || {}).length }));
   }, []);
   return (
     <div>
@@ -363,15 +402,27 @@ function DashboardTab() {
       <div className="adm-stats">
         <div className="adm-stat-card"><div className="adm-stat-num">{stats.mcps}</div><div className="adm-stat-label">MCP Integrations</div></div>
         <div className="adm-stat-card"><div className="adm-stat-num">{stats.aiKeys}</div><div className="adm-stat-label">AI Keys Configured</div></div>
-        <div className="adm-stat-card"><div className="adm-stat-num" style={{fontSize:18,paddingTop:4}}>{stats.ai||'—'}</div><div className="adm-stat-label">Active AI Provider</div></div>
-        <div className="adm-stat-card"><div className="adm-stat-num" style={{fontSize:14,paddingTop:8}}>{stats.model||'—'}</div><div className="adm-stat-label">Active Model</div></div>
+        <div className="adm-stat-card"><div className="adm-stat-num" style={{ fontSize: 18, paddingTop: 4 }}>{stats.ai || '—'}</div><div className="adm-stat-label">Active AI Provider</div></div>
+        <div className="adm-stat-card"><div className="adm-stat-num" style={{ fontSize: 14, paddingTop: 8 }}>{stats.model || '—'}</div><div className="adm-stat-label">Active Model</div></div>
       </div>
-      <div className="adm-card" style={{lineHeight:1.7,color:'var(--adm-dim)',fontSize:13.5}}>
-        <div style={{fontWeight:600,color:'var(--adm-text)',marginBottom:8}}>Quick Guide</div>
-        <div>📦 <strong>MCPs</strong> — Add or remove integrations like Gmail, Drive, Slack. Each MCP needs its API key to work.</div>
-        <div>🤖 <strong>AI</strong> — View the active AI provider and model. API keys are managed via server environment variables.</div>
-        <div>📚 <strong>RAG</strong> — Enable the knowledge base so TOM.AI can reference your documents.</div>
-        <div>👤 <strong>Profile</strong> — Update admin name, email, and change your password.</div>
+      <div className="adm-card" style={{ lineHeight: 1.7, color: 'var(--adm-dim)', fontSize: 13.5 }}>
+        <div style={{ fontWeight: 600, color: 'var(--adm-text)', marginBottom: 8 }}>Quick Guide</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <Plug size={16} style={{ flexShrink: 0 }} />
+          <span><strong>MCPs</strong> — Add or remove integrations like Gmail, Drive, Slack. Each MCP needs its API key to work.</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <Brain size={16} style={{ flexShrink: 0 }} />
+          <span><strong>AI</strong> — View the active AI provider and model. API keys are managed via server environment variables.</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <Database size={16} style={{ flexShrink: 0 }} />
+          <span><strong>RAG</strong> — Enable the knowledge base so TOM.AI can reference your documents.</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <UserIcon size={16} style={{ flexShrink: 0 }} />
+          <span><strong>Profile</strong> — Update admin name, email, and change your password.</span>
+        </div>
       </div>
     </div>
   );
@@ -379,19 +430,19 @@ function DashboardTab() {
 
 /* ══ Main Admin Panel ════════════════════════════════════════════════ */
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>' },
-  { id: 'mcps', label: 'MCPs', icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l4 4h-3v6h-2V6H8l4-4zM4 20v-5h2v5h12v-5h2v5c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2z"/></svg>' },
-  { id: 'ai', label: 'AI', icon: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>' },
-  { id: 'rag', label: 'RAG', icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v16H4z"/><path d="M4 12h16"/></svg>' },
-  { id: 'profile', label: 'Profile', icon: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>' },
+  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={14} /> },
+  { id: 'mcps', label: 'MCPs', icon: <Plug size={14} /> },
+  { id: 'ai', label: 'AI', icon: <Brain size={14} /> },
+  { id: 'rag', label: 'RAG', icon: <Database size={14} /> },
+  { id: 'profile', label: 'Profile', icon: <UserIcon size={14} /> },
 ];
 
 export default function AdminPanel() {
-  const [authed, setAuthed]   = useState(!!getToken());
-  const [tab,    setTab]      = useState('dashboard');
-  const [toast,  setToast]    = useState(null);
+  const [authed, setAuthed] = useState(!!getToken());
+  const [tab, setTab] = useState('dashboard');
+  const [toast, setToast] = useState(null);
 
-  const showToast = (msg, type='success') => setToast({ msg, type, key: Date.now() });
+  const showToast = (msg, type = 'success') => setToast({ msg, type, key: Date.now() });
   const logout = () => { localStorage.removeItem('tom_admin_token'); setAuthed(false); };
 
   if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
@@ -409,16 +460,14 @@ export default function AdminPanel() {
         </div>
         <nav className="adm-nav">
           {TABS.map(t => (
-            <button key={t.id} className={`adm-nav-item ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>
+            <button key={t.id} className={`adm-nav-item ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
               {renderIcon(t.icon)} {t.label}
             </button>
           ))}
         </nav>
         <div className="adm-sidebar-footer">
-          <button className="adm-logout-btn" onClick={logout}>
-            <svg viewBox="0 0 24 24" fill="currentColor" style={{width:'1.2em',height:'1.2em',verticalAlign:'middle',marginRight:'6px'}}>
-              <path d="M10 14V7l5 3.5-5 3.5zM5 5h14v2H5V5zm0 12h14v2H5v-2z"/>
-            </svg>
+          <button className="adm-logout-btn" onClick={logout} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <LogOut size={14} />
             Logout
           </button>
         </div>
@@ -427,14 +476,14 @@ export default function AdminPanel() {
       <div className="adm-main">
         <div className="adm-topbar">
           <div>
-            <div className="adm-topbar-title" style={{display:'flex',alignItems:'center',gap:'8px'}}>
+            <div className="adm-topbar-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               {renderIcon(cur.icon)} {cur.label}
             </div>
             <div className="adm-topbar-sub">TOM.AI Admin Panel</div>
           </div>
           <div className="adm-topbar-right">
             <div className="adm-status-dot" title="Backend connected" />
-            <span style={{fontSize:12,color:'var(--adm-dim)'}}>Live</span>
+            <span style={{ fontSize: 12, color: 'var(--adm-dim)' }}>Live</span>
           </div>
         </div>
         <div className="adm-content">{tabMap[tab]}</div>

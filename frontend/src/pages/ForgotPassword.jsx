@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { forgotPassword, verifyResetOTP, resetPassword } from '../services/api';
 import { isValidEmail, isValidOTP, isValidPassword, getPasswordStrength } from '../utils/validators';
+import { AlertCircle, CheckCircle, Mail, KeyRound, Lock, ArrowLeft } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import '../styles/pages.css';
 
@@ -79,7 +80,7 @@ const ForgotPassword = () => {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-logo">
-          <span className="logo-icon">🔐</span>
+          <span className="logo-icon" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Lock size={28} /></span>
           <h1>TOM.AI</h1>
           <p>Reset your password</p>
         </div>
@@ -96,8 +97,18 @@ const ForgotPassword = () => {
 
         <h2 className="auth-title">{steps[step - 1].label}</h2>
 
-        {error && <div className="alert alert-error" role="alert">⚠️ {error}</div>}
-        {success && <div className="alert alert-success">✅ {success}</div>}
+        {error && (
+          <div className="alert alert-error" role="alert" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertCircle size={14} />
+            <span>{error}</span>
+          </div>
+        )}
+        {success && (
+          <div className="alert alert-success" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <CheckCircle size={14} />
+            <span>{success}</span>
+          </div>
+        )}
 
         {step === 1 && (
           <form className="auth-form" onSubmit={handleSendOTP}>
@@ -113,8 +124,13 @@ const ForgotPassword = () => {
                 required
               />
             </div>
-            <button id="forgot-send-otp-btn" type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading}>
-              {loading ? <LoadingSpinner size="small" /> : '📨 Send Reset Code'}
+            <button id="forgot-send-otp-btn" type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              {loading ? <LoadingSpinner size="small" /> : (
+                <>
+                  <Mail size={16} />
+                  <span>Send Reset Code</span>
+                </>
+              )}
             </button>
           </form>
         )}
@@ -138,14 +154,26 @@ const ForgotPassword = () => {
                 required
               />
             </div>
-            <button id="forgot-verify-otp-btn" type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading}>
-              {loading ? <LoadingSpinner size="small" /> : '✓ Verify OTP'}
+            <button id="forgot-verify-otp-btn" type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              {loading ? <LoadingSpinner size="small" /> : (
+                <>
+                  <CheckCircle size={16} />
+                  <span>Verify OTP</span>
+                </>
+              )}
             </button>
-            <p className="spam-notice-text" style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', marginTop: '12px', lineHeight: '1.4' }}>
-              ℹ️ Don't see the email? Please check your <strong>Spam folder</strong>. If it's there, mark it as <strong>"Not Spam"</strong> to receive future reset emails directly in your inbox.
-            </p>
-            <button type="button" className="btn btn-secondary btn-full" onClick={() => { setStep(1); setError(''); }}>
-              ← Back
+            <div className="spam-notice-text" style={{ fontSize: '12px', color: '#9ca3af', marginTop: '12px', lineHeight: '1.4', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+              <AlertCircle size={14} style={{ marginTop: 2, flexShrink: 0 }} />
+              <span>Don't see the email? Please check your <strong>Spam folder</strong>. If it's there, mark it as <strong>"Not Spam"</strong> to receive future reset emails directly in your inbox.</span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-full"
+              onClick={() => { setStep(1); setError(''); }}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '12px' }}
+            >
+              <ArrowLeft size={16} />
+              <span>Back</span>
             </button>
           </form>
         )}
@@ -184,14 +212,22 @@ const ForgotPassword = () => {
                 required
               />
             </div>
-            <button id="forgot-reset-btn" type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading}>
-              {loading ? <LoadingSpinner size="small" /> : '🔓 Reset Password'}
+            <button id="forgot-reset-btn" type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              {loading ? <LoadingSpinner size="small" /> : (
+                <>
+                  <KeyRound size={16} />
+                  <span>Reset Password</span>
+                </>
+              )}
             </button>
           </form>
         )}
 
         <div className="auth-footer">
-          <Link to="/login" id="forgot-back-login">← Back to Login</Link>
+          <Link to="/login" id="forgot-back-login" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <ArrowLeft size={14} />
+            <span>Back to Login</span>
+          </Link>
         </div>
       </div>
     </div>

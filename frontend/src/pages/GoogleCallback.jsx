@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { exchangeGoogleCode } from '../services/api';
 import { setToken, setUser } from '../utils/storage';
+import { AlertCircle, CheckCircle2, AlertTriangle, ArrowLeft } from 'lucide-react';
+import InteractiveLogo from '../components/InteractiveLogo';
 import '../styles/pages.css';
 
 /**
@@ -87,7 +89,7 @@ const GoogleCallback = () => {
       <div className="auth-card" style={{ textAlign: 'center' }}>
         {/* Logo */}
         <div className="auth-logo">
-          <span className="logo-icon"><img src="/images/logo.png" alt="tom.ai" width="32" height="32" style={{borderRadius:'8px',objectFit:'contain'}} /></span>
+          <span className="logo-icon"><InteractiveLogo width={32} height={32} /></span>
           <h1>tom.ai</h1>
         </div>
 
@@ -106,8 +108,8 @@ const GoogleCallback = () => {
         )}
 
         {status === 'success' && (
-          <div style={{ padding: '12px 0' }}>
-            <span style={{ fontSize: '48px', display: 'block', marginBottom: '12px' }}>✅</span>
+          <div style={{ padding: '12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <CheckCircle2 size={48} style={{ color: 'var(--success, #22c55e)', marginBottom: '12px' }} />
             <h2 className="auth-title">
               {isGmailConnection ? 'Gmail Connected!' : 'Welcome to TOM.AI!'}
             </h2>
@@ -120,21 +122,24 @@ const GoogleCallback = () => {
         )}
 
         {status === 'error' && (
-          <div style={{ padding: '12px 0' }}>
-            <span style={{ fontSize: '48px', display: 'block', marginBottom: '12px' }}>😕</span>
+          <div style={{ padding: '12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <AlertTriangle size={48} style={{ color: 'var(--error, #ef4444)', marginBottom: '12px' }} />
             <h2 className="auth-title" style={{ color: 'var(--error, #f87171)' }}>
               {isGmailConnection ? 'Connection Failed' : 'Sign-in Failed'}
             </h2>
-            <div className="alert alert-error" role="alert" style={{ marginTop: '16px' }}>
-              ⚠️ {errorMessage}
+            <div className="alert alert-error" role="alert" style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <AlertCircle size={14} />
+              <span>{errorMessage}</span>
             </div>
-            <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
               <button
                 id="google-callback-retry-btn"
                 className="btn btn-primary btn-full"
                 onClick={() => navigate('/login')}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                ← Try again
+                <ArrowLeft size={16} />
+                <span>Try again</span>
               </button>
               <button
                 className="btn btn-secondary btn-full"
@@ -151,3 +156,4 @@ const GoogleCallback = () => {
 };
 
 export default GoogleCallback;
+

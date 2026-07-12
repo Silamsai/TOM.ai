@@ -20,14 +20,27 @@ const AnimatedLogo = ({
   className = '',
 }) => {
   const [imgError, setImgError] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const sizes = { sm: 32, md: 48, lg: 96 };
   const px = sizes[size] || sizes.md;
 
   const show3d = use3d && !FEATURES.prefersReducedMotion();
 
+  const hoverStyle = {
+    transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.4s ease',
+    transform: hovered ? 'scale(1.1) rotate(3deg)' : 'scale(1) rotate(0deg)',
+    filter: hovered ? 'drop-shadow(0 4px 12px rgba(99, 102, 241, 0.45))' : 'none',
+    cursor: 'pointer'
+  };
+
   if (show3d) {
     return (
-      <div className={`animated-logo animated-logo--${size} ${className}`}>
+      <div
+        className={`animated-logo animated-logo--${size} ${className}`}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={hoverStyle}
+      >
         <Suspense fallback={
           <img src={src} alt={alt} width={px} height={px} className="animated-logo__img" onError={() => setImgError(true)} />
         }>
@@ -52,7 +65,13 @@ const AnimatedLogo = ({
       width={px}
       height={px}
       className={`animated-logo__img animated-logo--${size} ${className}`}
-      style={{ borderRadius: size === 'lg' ? 16 : 8, objectFit: 'contain' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        borderRadius: size === 'lg' ? 16 : 8,
+        objectFit: 'contain',
+        ...hoverStyle
+      }}
       onError={() => setImgError(true)}
     />
   );

@@ -6,6 +6,22 @@ import TaskCard from '../components/TaskCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { ConnectModal } from '../components/ChatSidebar';
 import { IconBolt } from '../components/icons/UiIcons';
+import {
+  ClipboardList,
+  Hourglass,
+  CheckCircle,
+  X,
+  Plus,
+  AlertCircle,
+  Terminal,
+  CheckSquare,
+  Share2,
+  Sun,
+  Moon,
+  User as UserIcon,
+  LogOut,
+  PlusCircle
+} from 'lucide-react';
 import { getToken, getUser, getGuestProfile, getTheme, setTheme as saveTheme, clearAll } from '../utils/storage';
 import '../styles/pages.css';
 import '../styles/components.css';
@@ -47,26 +63,33 @@ const INITIAL_FORM = {
 };
 
 const FILTERS = [
-  { label: 'All',        value: 'all' },
-  { label: '⏳ Pending',  value: 'pending' },
-  { label: '✅ Done',     value: 'completed' },
+  { label: 'All', value: 'all' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Done', value: 'completed' },
 ];
 
 const SORT_OPTIONS = [
   { label: 'Date Created', value: 'createdAt' },
-  { label: 'Due Date',     value: 'dueDate' },
-  { label: 'Priority',     value: 'priority' },
+  { label: 'Due Date', value: 'dueDate' },
+  { label: 'Priority', value: 'priority' },
 ];
 
-const STAT_ICONS = { all: '📋', pending: '⏳', completed: '✅' };
+const getStatIcon = (value) => {
+  switch (value) {
+    case 'all': return <ClipboardList size={14} />;
+    case 'pending': return <Hourglass size={14} />;
+    case 'completed': return <CheckCircle size={14} />;
+    default: return <ClipboardList size={14} />;
+  }
+};
 
 /* ── Stats mini-card ── */
-const StatCard = ({ label, value, icon, active, onClick }) => (
+const StatCard = ({ label, value, status, active, onClick }) => (
   <button
     className={`todo-stat-card ${active ? 'active' : ''}`}
     onClick={onClick}
   >
-    <span className="todo-stat-icon">{icon}</span>
+    <span className="todo-stat-icon">{getStatIcon(status)}</span>
     <span className="todo-stat-value">{value}</span>
     <span className="todo-stat-label">{label}</span>
   </button>
@@ -74,11 +97,11 @@ const StatCard = ({ label, value, icon, active, onClick }) => (
 
 /* ── Collapsible form ── */
 const TaskForm = ({ onCreated, showToast }) => {
-  const [open, setOpen]             = useState(false);
-  const [formData, setFormData]     = useState(INITIAL_FORM);
-  const [loading, setLoading]       = useState(false);
-  const [formError, setFormError]   = useState('');
-  const firstInputRef               = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [formData, setFormData] = useState(INITIAL_FORM);
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState('');
+  const firstInputRef = useRef(null);
 
   const toggle = () => {
     setOpen(o => {
@@ -107,7 +130,7 @@ const TaskForm = ({ onCreated, showToast }) => {
       sendTaskNotification({ taskName: formData.taskName, dueDate: formData.dueDate });
       setFormData(INITIAL_FORM);
       setOpen(false);
-      showToast('✅ Task created!', 'success');
+      showToast('Task created!', 'success');
       onCreated();
     } catch (err) {
       setFormError(err.response?.data?.message || 'Failed to create task.');
@@ -123,8 +146,11 @@ const TaskForm = ({ onCreated, showToast }) => {
         id="toggle-task-form"
         className={`todo-add-btn ${open ? 'open' : ''}`}
         onClick={toggle}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
       >
-        <span className="todo-add-icon">{open ? '✕' : '+'}</span>
+        <span className="todo-add-icon" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          {open ? <X size={14} /> : <Plus size={14} />}
+        </span>
         <span>{open ? 'Cancel' : 'New Task'}</span>
       </button>
 
@@ -134,8 +160,9 @@ const TaskForm = ({ onCreated, showToast }) => {
           <h2 className="todo-form-title">Add New Task</h2>
 
           {formError && (
-            <div className="alert alert-error" style={{ marginBottom: '14px' }}>
-              ⚠️ {formError}
+            <div className="alert alert-error" style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <AlertCircle size={14} />
+              <span>{formError}</span>
             </div>
           )}
 
@@ -191,9 +218,9 @@ const TaskForm = ({ onCreated, showToast }) => {
               <label htmlFor="task-priority" className="form-label">Priority</label>
               <select id="task-priority" name="priority" className="form-input form-select"
                 value={formData.priority} onChange={handleChange}>
-                <option value="low">🟢 Low</option>
-                <option value="medium">🟡 Medium</option>
-                <option value="high">🔴 High</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
               </select>
             </div>
 
@@ -208,8 +235,13 @@ const TaskForm = ({ onCreated, showToast }) => {
               />
             </div>
 
-            <button id="create-task-btn" type="submit" className="btn btn-primary btn-full" disabled={loading}>
-              {loading ? <LoadingSpinner size="small" /> : '+ Add Task'}
+            <button id="create-task-btn" type="submit" className="btn btn-primary btn-full" disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              {loading ? <LoadingSpinner size="small" /> : (
+                <>
+                  <PlusCircle size={14} />
+                  <span>Add Task</span>
+                </>
+              )}
             </button>
           </form>
         </div>
@@ -220,10 +252,10 @@ const TaskForm = ({ onCreated, showToast }) => {
 
 /* ── Main TodoList page ── */
 const TodoList = () => {
-  const navigate    = useNavigate();
-  const token       = getToken();
-  const user        = getUser();
-  const guest       = getGuestProfile();
+  const navigate = useNavigate();
+  const token = getToken();
+  const user = getUser();
+  const guest = getGuestProfile();
   const displayName = user?.name?.split(' ')[0] || guest?.name?.split(' ')[0] || null;
 
   /* ── Profile dropdown ── */
@@ -246,7 +278,7 @@ const TodoList = () => {
   };
 
   const [connectOpen, setConnectOpen] = useState(false);
-  const [theme,       setTheme]       = useState(getTheme);
+  const [theme, setTheme] = useState(getTheme);
 
   useEffect(() => {
     if (theme === 'light') document.body.classList.add('light-mode');
@@ -257,12 +289,12 @@ const TodoList = () => {
   const initials = ((user?.name || guest?.name || 'G')
     .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2));
 
-  const [tasks,        setTasks]        = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy,       setSortBy]       = useState('createdAt');
-  const [listLoading,  setListLoading]  = useState(true);
-  const [counts,       setCounts]       = useState({ all: 0, pending: 0, completed: 0 });
-  const { toasts, show: showToast }     = useToast();
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [listLoading, setListLoading] = useState(true);
+  const [counts, setCounts] = useState({ all: 0, pending: 0, completed: 0 });
+  const { toasts, show: showToast } = useToast();
 
   const fetchTasks = useCallback(async () => {
     setListLoading(true);
@@ -275,13 +307,13 @@ const TodoList = () => {
       ]);
       const all = allRes.data.data.tasks || [];
       setCounts({
-        all:       allRes.data.data.total || all.length,
-        pending:   pendRes.data.data.total || (pendRes.data.data.tasks || []).length,
+        all: allRes.data.data.total || all.length,
+        pending: pendRes.data.data.total || (pendRes.data.data.tasks || []).length,
         completed: doneRes.data.data.total || (doneRes.data.data.tasks || []).length,
       });
-      if (statusFilter === 'all')       setTasks(all);
-      else if (statusFilter === 'pending')   setTasks(pendRes.data.data.tasks || []);
-      else                              setTasks(doneRes.data.data.tasks || []);
+      if (statusFilter === 'all') setTasks(all);
+      else if (statusFilter === 'pending') setTasks(pendRes.data.data.tasks || []);
+      else setTasks(doneRes.data.data.tasks || []);
     } catch {
       showToast('Failed to load tasks.', 'error');
     } finally {
@@ -305,7 +337,7 @@ const TodoList = () => {
   const handleDelete = async (id) => {
     try {
       await deleteTask(id);
-      showToast('🗑️ Task deleted.', 'info');
+      showToast('Task deleted.', 'info');
       fetchTasks();
     } catch {
       showToast('Failed to delete task.', 'error');
@@ -330,15 +362,11 @@ const TodoList = () => {
           {/* Center: Chat / Tasks / Settings tabs */}
           <nav className="chat-nav-center">
             <Link to="/chat" className="chat-nav-tab" id="nav-chat-tab">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
+              <Terminal size={13} />
               <span>Chat</span>
             </Link>
             <Link to="/todos" className="chat-nav-tab chat-nav-tab--active" id="nav-tasks-tab">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/>
-              </svg>
+              <CheckSquare size={13} />
               <span>Tasks</span>
             </Link>
             <Link to="/settings" className="chat-nav-tab" id="nav-settings-tab">
@@ -355,10 +383,7 @@ const TodoList = () => {
               title="Connect integrations"
               onClick={() => setConnectOpen(true)}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
+              <Share2 size={13} />
               <span>Connect</span>
             </button>
 
@@ -367,11 +392,7 @@ const TodoList = () => {
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             >
-              {theme === 'dark' ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-              ) : (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-              )}
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
             </button>
 
             {/* User avatar with profile dropdown */}
@@ -398,11 +419,11 @@ const TodoList = () => {
                   </div>
                   <div className="chat-profile-dropdown-divider" />
                   <button className="chat-profile-dropdown-item" onClick={() => { setShowProfileDropdown(false); navigate('/settings'); }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <UserIcon size={14} />
                     Account Settings
                   </button>
                   <button className="chat-profile-dropdown-item chat-profile-dropdown-logout" onClick={handleLogout}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    <LogOut size={14} />
                     Logout
                   </button>
                 </div>
@@ -432,8 +453,8 @@ const TodoList = () => {
                 {FILTERS.map(f => (
                   <StatCard
                     key={f.value}
-                    icon={STAT_ICONS[f.value]}
-                    label={f.label.replace(/[⏳✅]/g, '').trim()}
+                    status={f.value}
+                    label={f.label}
                     value={counts[f.value] ?? 0}
                     active={statusFilter === f.value}
                     onClick={() => setStatusFilter(f.value)}
@@ -481,7 +502,9 @@ const TodoList = () => {
                 <LoadingSpinner size="medium" text="Loading tasks..." />
               ) : tasks.length === 0 ? (
                 <div className="tasks-empty fade-in">
-                  <div className="empty-icon">📝</div>
+                  <div className="empty-icon" style={{ color: 'var(--text-muted)', display: 'flex', justifyContent: 'center' }}>
+                    <ClipboardList size={40} />
+                  </div>
                   <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: 8 }}>
                     {statusFilter === 'all'
                       ? 'No tasks yet. Hit "New Task" to get started!'

@@ -11,54 +11,92 @@ import {
   getOrCreateCurrentSession, getSession,
   addMessage, updateSessionTitle, setCurrentId, createSession
 } from '../utils/chatSessions';
+import {
+  Plus,
+  X,
+  Send,
+  Paperclip,
+  BookOpen,
+  Sparkles,
+  Brain,
+  FileText,
+  Terminal,
+  User as UserIcon,
+  Smile,
+  PenTool,
+  CheckSquare,
+  Lightbulb,
+  Check,
+  AlertTriangle,
+  Mic,
+  MicOff,
+  Menu,
+  Moon,
+  Sun,
+  LogOut,
+  ChevronDown,
+  Upload,
+  Share2
+} from 'lucide-react';
 import '../styles/pages.css';
 import '../styles/sidebar.css';
 
 /* ── Feature cards for empty state ── */
 const FEATURE_CARDS = [
   {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9.5 2a2.5 2.5 0 0 1 5 0c1.1 0 2 .9 2 2 1.1 0 2 .9 2 2 0 .7-.4 1.4-1 1.7V9c0 3.3-2.7 6-6 6S5.5 12.3 5.5 9V7.7C4.9 7.4 4.5 6.7 4.5 6c0-1.1.9-2 2-2 0-1.1.9-2 2-2z"/>
-        <path d="M9.5 15v1a3 3 0 0 0 6 0v-1"/>
-        <path d="M6 9H5a2 2 0 0 0 0 4h1"/><path d="M18 9h1a2 2 0 0 1 0 4h-1"/>
-      </svg>
-    ),
+    icon: <Sparkles size={22} style={{ color: '#c084fc' }} />,
     title: 'Smart Answers',
     desc: 'Ask anything — science, tech, coding and more.',
   },
   {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="3"/>
-        <path d="M9 12l2 2 4-4"/>
-      </svg>
-    ),
+    icon: <CheckSquare size={22} style={{ color: '#38bdf8' }} />,
     title: 'Task Manager',
     desc: 'Create tasks, set deadlines, stay organized.',
   },
   {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-      </svg>
-    ),
+    icon: <PenTool size={22} style={{ color: '#fbbf24' }} />,
     title: 'AI Writing',
     desc: 'Draft emails, essays, summaries instantly.',
   },
 ];
 
 const SUGGESTIONS = [
-  { icon: '💡', text: 'Help me brainstorm' },
-  { icon: '✍️', text: 'Write something for me' },
-  { icon: '📋', text: 'Plan my tasks' },
-  { icon: '😄', text: 'Tell me a joke' },
+  { icon: 'brainstorm', text: 'Help me brainstorm' },
+  { icon: 'write', text: 'Write something for me' },
+  { icon: 'plan', text: 'Plan my tasks' },
+  { icon: 'joke', text: 'Tell me a joke' },
 ];
+
+const getSuggestionIcon = (iconName) => {
+  switch (iconName) {
+    case 'brainstorm': return <Lightbulb size={14} style={{ color: '#fbbf24' }} />;
+    case 'write': return <PenTool size={14} style={{ color: '#f43f5e' }} />;
+    case 'plan': return <CheckSquare size={14} style={{ color: '#10b981' }} />;
+    case 'joke': return <Smile size={14} style={{ color: '#fbbf24' }} />;
+    default: return <Lightbulb size={14} />;
+  }
+};
 
 /* Fallback model if backend returns nothing */
 const DEFAULT_MODELS = [
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', shortName: 'Flash 2.5', desc: 'Fast, responsive & multimodal', color: '#38bdf8', icon: '⚡' },
+  { id: 'gemini-flash-latest', name: 'Gemini Flash Latest', shortName: 'Flash Latest', desc: 'Fast, responsive & multimodal', color: '#38bdf8', icon: 'zap' },
 ];
+
+const getModelIcon = (iconName) => {
+  switch (iconName) {
+    case 'zap':
+    case '⚡':
+      return <Sparkles size={13} style={{ color: '#fbbf24', display: 'inline-block', verticalAlign: 'middle' }} />;
+    case 'brain':
+    case '🧠':
+      return <Brain size={13} style={{ color: '#a78bfa', display: 'inline-block', verticalAlign: 'middle' }} />;
+    case 'bot':
+    case '🤖':
+      return <Terminal size={13} style={{ color: '#38bdf8', display: 'inline-block', verticalAlign: 'middle' }} />;
+    default:
+      return <Sparkles size={13} style={{ display: 'inline-block', verticalAlign: 'middle' }} />;
+  }
+};
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const ADMIN_API = `${API_BASE_URL}/admin`;
@@ -66,10 +104,10 @@ const ADMIN_API = `${API_BASE_URL}/admin`;
 /* ── File type icon/class helper ── */
 const getDocIcon = (fileName = '') => {
   const ext = fileName.split('.').pop()?.toLowerCase();
-  if (ext === 'pdf') return { cls: 'pdf', emoji: '📄' };
-  if (ext === 'md' || ext === 'markdown') return { cls: 'md', emoji: '📝' };
-  if (ext === 'txt') return { cls: 'txt', emoji: '📃' };
-  return { cls: 'file', emoji: '📎' };
+  if (ext === 'pdf') return { cls: 'pdf', type: 'pdf' };
+  if (ext === 'md' || ext === 'markdown') return { cls: 'md', type: 'md' };
+  if (ext === 'txt') return { cls: 'txt', type: 'txt' };
+  return { cls: 'file', type: 'file' };
 };
 
 const formatBytes = (bytes) => {
@@ -187,8 +225,8 @@ const KnowledgeBasePanel = ({ onClose, onUploadSuccess }) => {
           <div className="kb-panel-title">
             <div className="kb-panel-title-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
               </svg>
             </div>
             <div>
@@ -198,7 +236,7 @@ const KnowledgeBasePanel = ({ onClose, onUploadSuccess }) => {
           </div>
           <button className="kb-panel-close" onClick={onClose} aria-label="Close">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
@@ -221,9 +259,9 @@ const KnowledgeBasePanel = ({ onClose, onUploadSuccess }) => {
           />
           <div className="kb-dropzone-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
           </div>
           <h4>Drag & drop your document here</h4>
@@ -235,7 +273,7 @@ const KnowledgeBasePanel = ({ onClose, onUploadSuccess }) => {
             type="button"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 5v14M5 12l7-7 7 7"/>
+              <path d="M12 5v14M5 12l7-7 7 7" />
             </svg>
             Choose File
           </button>
@@ -247,7 +285,7 @@ const KnowledgeBasePanel = ({ onClose, onUploadSuccess }) => {
           <div className={`kb-status ${uploadStatus.type}`}>
             {uploadStatus.type === 'uploading' && <div className="kb-status-spinner" />}
             {uploadStatus.type === 'success' && <span>✓</span>}
-            {uploadStatus.type === 'error'   && <span>⚠</span>}
+            {uploadStatus.type === 'error' && <span>⚠</span>}
             <span>{uploadStatus.msg}</span>
           </div>
         )}
@@ -261,23 +299,22 @@ const KnowledgeBasePanel = ({ onClose, onUploadSuccess }) => {
             <div className="kb-empty" style={{ color: 'rgba(255,255,255,0.2)' }}>Loading…</div>
           ) : docs.length === 0 ? (
             <div className="kb-empty">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.25, display: 'block', margin: '0 auto 10px' }}>
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-              </svg>
+              <BookOpen size={40} style={{ opacity: 0.25, display: 'block', margin: '0 auto 10px', color: 'currentColor' }} />
               No documents yet. Upload a PDF, TXT, or Markdown file to get started.
             </div>
           ) : docs.map(doc => {
-            const { cls, emoji } = getDocIcon(doc.fileName);
+            const { cls, type } = getDocIcon(doc.fileName);
             return (
               <div key={doc._id} className="kb-doc-item">
-                <div className={`kb-doc-icon ${cls}`}>{emoji}</div>
+                <div className={`kb-doc-icon ${cls}`}>
+                  {type === 'pdf' ? <FileText size={16} /> : (type === 'md' ? <PenTool size={16} /> : (type === 'txt' ? <FileText size={16} /> : <Paperclip size={16} />))}
+                </div>
                 <div className="kb-doc-info">
                   <div className="kb-doc-name" title={doc.fileName}>{doc.fileName}</div>
                   <div className="kb-doc-meta">
                     <span>{formatBytes(doc.fileSize)}</span>
                     <span className="kb-doc-chunks">
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
                       {doc.chunkCount} chunks
                     </span>
                     <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
@@ -294,8 +331,8 @@ const KnowledgeBasePanel = ({ onClose, onUploadSuccess }) => {
                     <div className="kb-status-spinner" style={{ width: 12, height: 12 }} />
                   ) : (
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <polyline points="3 6 5 6 21 6"/>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
                     </svg>
                   )}
                 </button>
@@ -313,10 +350,10 @@ const KnowledgeBasePanel = ({ onClose, onUploadSuccess }) => {
    Main Chat Component
 ══════════════════════════════════════════════════════════════ */
 const Chat = () => {
-  const navigate   = useNavigate();
-  const token       = getToken();
-  const user        = getUser();
-  const guest       = getGuestProfile();
+  const navigate = useNavigate();
+  const token = getToken();
+  const user = getUser();
+  const guest = getGuestProfile();
   const displayName = user?.name?.split(' ')[0] || guest?.name?.split(' ')[0] || null;
 
   /* ── Profile dropdown ── */
@@ -326,17 +363,94 @@ const Chat = () => {
   // Chat mode: 'standard' | 'personal'
   const [chatMode, setChatMode] = useState(() => localStorage.getItem('tom_chat_mode') || 'standard');
 
-  const [sidebarOpen,  setSidebarOpen]  = useState(false);
-  const [sessionId,    setSessionId]    = useState(() => getOrCreateCurrentSession().id);
-  const [messages,     setMessages]     = useState([]);
-  const [input,        setInput]        = useState('');
-  const [replyingTo,   setReplyingTo]   = useState(null);
-  const [attachments,  setAttachments]  = useState([]);
-  const [loading,      setLoading]      = useState(false);
-  const [error,        setError]        = useState('');
-  const [theme,        setTheme]        = useState(getTheme);
-  const [connectOpen,  setConnectOpen]  = useState(false);
-  const [kbOpen,       setKbOpen]       = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sessionId, setSessionId] = useState(() => getOrCreateCurrentSession().id);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [attachments, setAttachments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [theme, setTheme] = useState(getTheme);
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [kbOpen, setKbOpen] = useState(false);
+
+  // Speech recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef(null);
+  const baseInputRef = useRef('');
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsRecording(false);
+    } else {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Speech recognition is not supported in this browser. Please try Chrome, Edge, or Safari.");
+        return;
+      }
+
+      baseInputRef.current = input;
+
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => {
+        setIsRecording(true);
+        setError('');
+      };
+
+      rec.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = 0; i < event.results.length; ++i) {
+          const transcriptSegment = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcriptSegment;
+          } else {
+            interimTranscript += transcriptSegment;
+          }
+        }
+
+        const base = baseInputRef.current;
+        const speechText = (finalTranscript + interimTranscript).trim();
+        setInput(base ? `${base} ${speechText}` : speechText);
+      };
+
+      rec.onerror = (e) => {
+        console.error("Speech recognition error:", e.error);
+        setIsRecording(false);
+        if (e.error === 'not-allowed') {
+          setError("Microphone access was denied. Please enable microphone permissions in your browser settings.");
+        } else if (e.error === 'network') {
+          setError("Speech recognition network error. Note: The Web Speech API requires an active internet connection to communicate with Google/Browser translation servers. Please check your network connection or use text input.");
+        } else if (e.error !== 'no-speech') {
+          setError(`Speech recognition error: ${e.error}`);
+        }
+      };
+
+      rec.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = rec;
+      rec.start();
+    }
+  };
 
   /* ── Dynamic model list from admin config ── */
   const [availableModels, setAvailableModels] = useState(DEFAULT_MODELS);
@@ -360,10 +474,10 @@ const Chat = () => {
       .catch(() => { /* keep defaults */ });
   }, []);
 
-  const [selectedModel,       setSelectedModel]       = useState(() => {
+  const [selectedModel, setSelectedModel] = useState(() => {
     return localStorage.getItem('tom_ai_model') || 'gemini-2.5-flash';
   });
-  const [showModelDropdown,   setShowModelDropdown]   = useState(false);
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
   const modelDropdownRef = useRef(null);
 
   useEffect(() => {
@@ -402,8 +516,8 @@ const Chat = () => {
   };
 
   const messagesEndRef = useRef(null);
-  const textareaRef    = useRef(null);
-  const fileInputRef   = useRef(null);
+  const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const onDocumentUploaded = (fileName) => {
     const statusMsg = {
@@ -456,8 +570,8 @@ const Chat = () => {
           const res = await getChatHistory(sessionId);
           const history = res.data.data || [];
           const mapped = history.flatMap(item => [
-            { type: 'user', message: item.userMessage,    timestamp: item.timestamp, id: `u-${item.messageId}`, attachments: item.attachments },
-            { type: 'bot',  message: item.claudeResponse, timestamp: item.timestamp, id: `b-${item.messageId}` },
+            { type: 'user', message: item.userMessage, timestamp: item.timestamp, id: `u-${item.messageId}`, attachments: item.attachments },
+            { type: 'bot', message: item.claudeResponse, timestamp: item.timestamp, id: `b-${item.messageId}` },
           ]);
           setMessages(mapped);
         } catch { setMessages([]); }
@@ -562,10 +676,15 @@ const Chat = () => {
 
     return (
       <div className="chat-input-area-v2">
+        {error && (
+          <div className="alert alert-error" role="alert" style={{ margin: '0 0 10px', borderRadius: '12px', textAlign: 'left' }}>
+            ⚠️ {error}
+          </div>
+        )}
         {replyingTo && (
           <div className="reply-preview-box" style={{ background: '#12121a', padding: '8px 14px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ fontSize: '12px', color: '#a5f3fc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              ↩ Replying to: {replyingTo.substring(0, 80).replace(/\n/g, ' ')}...
+            <span style={{ fontSize: '12px', color: '#a5f3fc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              Replying to: {replyingTo.substring(0, 80).replace(/\n/g, ' ')}...
             </span>
             <button onClick={() => setReplyingTo(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 4px' }}>✕</button>
           </div>
@@ -573,7 +692,7 @@ const Chat = () => {
         {attachments.length > 0 && (
           <div style={{ background: '#12121a', padding: '8px 14px', borderRadius: replyingTo ? '0' : '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <span style={{ fontSize: '12px', color: '#a5f3fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              📎 {attachments[0].fileName}
+              <Paperclip size={12} /> {attachments[0].fileName}
             </span>
             <button onClick={() => setAttachments([])} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 4px' }}>✕</button>
           </div>
@@ -606,9 +725,7 @@ const Chat = () => {
                   title="Attach file"
                   type="button"
                 >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                  </svg>
+                  <Paperclip size={11} />
                   <span>Attach</span>
                 </button>
               )}
@@ -622,9 +739,7 @@ const Chat = () => {
                   title="Manage Knowledge Base"
                   style={{ color: '#c084fc', borderColor: 'rgba(168,85,247,0.4)', background: 'rgba(168,85,247,0.08)' }}
                 >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                  </svg>
+                  <BookOpen size={11} />
                   <span>Knowledge Base</span>
                 </button>
               )}
@@ -640,9 +755,7 @@ const Chat = () => {
                   >
                     <span className="chat-model-dot" style={{ backgroundColor: currentModelObj.color, boxShadow: `0 0 5px ${currentModelObj.color}` }} />
                     <span>{currentModelObj.shortName}</span>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: '1px', transform: showModelDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
+                    <ChevronDown size={9} style={{ marginLeft: '1px', transform: showModelDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
                   </button>
 
                   {showModelDropdown && (
@@ -660,18 +773,18 @@ const Chat = () => {
                             }}
                             type="button"
                           >
-                            <span className="chat-model-item-emoji">{m.icon}</span>
+                            <span className="chat-model-item-emoji">{getModelIcon(m.icon)}</span>
                             <div className="chat-model-item-body">
                               <div className="chat-model-item-name">
                                 {m.name}
                                 {m.providerName ? (
-                                  <span className="chat-model-sim-badge" style={{background:'rgba(124,108,252,0.2)',color:'#a78bfa'}}>{m.providerName}</span>
+                                  <span className="chat-model-sim-badge" style={{ background: 'rgba(124,108,252,0.2)', color: '#a78bfa' }}>{m.providerName}</span>
                                 ) : null}
                               </div>
                               <div className="chat-model-item-desc">{m.desc}</div>
                             </div>
                             {selectedModel === m.id && (
-                              <span className="chat-model-item-check">✓</span>
+                              <span className="chat-model-item-check"><Check size={12} /></span>
                             )}
                           </button>
                         ))}
@@ -682,6 +795,33 @@ const Chat = () => {
               )}
 
               <div style={{ flex: 1 }} />
+
+              {/* Speech-to-Text Voice Recording Button */}
+              <button
+                className={`chat-voice-btn-v2 ${isRecording ? 'recording' : ''}`}
+                onClick={toggleRecording}
+                disabled={loading}
+                title={isRecording ? "Stop recording voice" : "Record voice"}
+                aria-label={isRecording ? "Stop recording voice" : "Record voice"}
+                type="button"
+                style={{
+                  marginRight: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: isRecording ? 'rgba(239, 68, 68, 0.2)' : 'none',
+                  color: isRecording ? '#ef4444' : '#888',
+                  border: isRecording ? '1px solid #ef4444' : 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  padding: 0
+                }}
+              >
+                {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+              </button>
 
               {/* Send button */}
               <button
@@ -694,13 +834,13 @@ const Chat = () => {
               >
                 {loading ? (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <circle cx="12" cy="12" r="10" opacity="0.25"/>
+                    <circle cx="12" cy="12" r="10" opacity="0.25" />
                     <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round">
-                      <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/>
+                      <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite" />
                     </path>
                   </svg>
                 ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                  <Send size={12} />
                 )}
               </button>
             </div>
@@ -743,9 +883,7 @@ const Chat = () => {
               aria-label="Toggle sidebar"
               title="Chat history"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
+              <Menu size={18} />
             </button>
             <div className="chat-nav-logo">
               <img src="/images/logo.png" alt="tom.ai" width="26" height="26" style={{ borderRadius: '7px', objectFit: 'contain' }} />
@@ -760,7 +898,7 @@ const Chat = () => {
                 type="button"
                 title="Standard AI Chat"
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <Terminal size={11} />
                 Chat
               </button>
               <button
@@ -769,7 +907,7 @@ const Chat = () => {
                 type="button"
                 title="Personal RAG — ask questions from your documents"
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                <BookOpen size={11} />
                 Personal
               </button>
             </div>
@@ -778,15 +916,11 @@ const Chat = () => {
           {/* Center: Chat / Tasks / Settings tabs */}
           <nav className="chat-nav-center">
             <Link to="/chat" className="chat-nav-tab chat-nav-tab--active" id="nav-chat-tab">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
+              <Terminal size={13} />
               <span>Chat</span>
             </Link>
             <Link to="/todos" className="chat-nav-tab" id="nav-tasks-tab">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/>
-              </svg>
+              <CheckSquare size={13} />
               <span>Tasks</span>
             </Link>
             <Link to="/settings" className="chat-nav-tab" id="nav-settings-tab">
@@ -810,9 +944,7 @@ const Chat = () => {
                   title="Open Knowledge Base Manager"
                   type="button"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                  </svg>
+                  <BookOpen size={12} />
                   Knowledge Base
                 </button>
               </>
@@ -825,10 +957,7 @@ const Chat = () => {
                 title="Connect integrations"
                 onClick={() => setConnectOpen(true)}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                </svg>
+                <Share2 size={13} />
                 <span>Connect</span>
               </button>
             )}
@@ -838,11 +967,7 @@ const Chat = () => {
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             >
-              {theme === 'dark' ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-              ) : (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-              )}
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
             </button>
 
             {/* User avatar with profile dropdown */}
@@ -869,11 +994,11 @@ const Chat = () => {
                   </div>
                   <div className="chat-profile-dropdown-divider" />
                   <button className="chat-profile-dropdown-item" onClick={() => { setShowProfileDropdown(false); navigate('/settings'); }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <UserIcon size={14} />
                     Account Settings
                   </button>
                   <button className="chat-profile-dropdown-item chat-profile-dropdown-logout" onClick={handleLogout}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    <LogOut size={14} />
                     Logout
                   </button>
                 </div>
@@ -892,7 +1017,7 @@ const Chat = () => {
                 <div className="rag-personal-empty">
                   <AnimatedLogo size="lg" className="chat-welcome-logo" />
                   <div className="rag-personal-badge">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    <BookOpen size={10} />
                     Personal RAG Mode
                   </div>
                   <h2>Ask from your documents</h2>
@@ -900,7 +1025,7 @@ const Chat = () => {
                     Upload PDFs, policy papers, research notes, and more — then ask questions and get answers grounded 100% in your files.
                   </p>
                   <button className="rag-open-kb-btn" onClick={() => setKbOpen(true)} type="button">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <Upload size={14} />
                     Open Knowledge Base
                   </button>
 
@@ -923,7 +1048,7 @@ const Chat = () => {
                   <div className="chat-suggestions-v2">
                     {SUGGESTIONS.map(s => (
                       <button key={s.text} className="chat-suggestion-chip-v2" onClick={() => sendMessage(s.text)}>
-                        <span>{s.icon}</span> {s.text}
+                        <span>{getSuggestionIcon(s.icon)}</span> {s.text}
                       </button>
                     ))}
                   </div>
@@ -973,12 +1098,6 @@ const Chat = () => {
               )}
               <div ref={messagesEndRef} />
             </div>
-
-            {error && (
-              <div className="alert alert-error" role="alert" style={{ margin: '0 16px 8px' }}>
-                ⚠️ {error}
-              </div>
-            )}
 
             <div className="chat-bottom-input">
               {renderInputBar()}
