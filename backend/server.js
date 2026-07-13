@@ -16,6 +16,7 @@ const gmailRoutes = require('./routes/gmail');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/user');
 const ragRoutes = require('./routes/rag');
+const imageRoutes = require('./routes/image');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -79,6 +80,14 @@ try {
   console.error('❌ Failed to register /api/rag routes:', ragErr.message);
 }
 
+// Image generation routes
+try {
+  app.use('/api/image', imageRoutes);
+  console.log('✅ /api/image routes registered.');
+} catch (imgErr) {
+  console.error('❌ Failed to register /api/image routes:', imgErr.message);
+}
+
 // Health check
 app.get('/api/health', (_req, res) => {
   res.status(200).json({ success: true, message: '🤖 TOM.AI backend is running.', timestamp: new Date().toISOString() });
@@ -108,8 +117,8 @@ const startServer = async () => {
     if (!process.env[v]) {
       console.warn(`  ⚠️  [WARN] ${v} is missing or empty!`);
     } else {
-      const maskedVal = process.env[v].length > 10 
-        ? `${process.env[v].substring(0, 6)}...${process.env[v].substring(process.env[v].length - 4)}` 
+      const maskedVal = process.env[v].length > 10
+        ? `${process.env[v].substring(0, 6)}...${process.env[v].substring(process.env[v].length - 4)}`
         : 'set';
       console.log(`  ✅  ${v} is loaded (${maskedVal})`);
     }

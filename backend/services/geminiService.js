@@ -16,13 +16,24 @@ const User = require('../models/User');
 const emailService = require('./emailService');
 const { buildRAGContext, searchPersonalDocuments } = require('./ragService');
 
+const fs = require('fs');
+
 // ---- MCP Setup ----------------------------------------------------
 const mcpServerPath = path.join(__dirname, '../../MCP-servers/gmail-mcp/server.js');
 let mcpClientInstance = null;
 let mcpTools = [];
+let hasAttemptedMCPConnection = false;
 
 async function getMCPClient() {
   if (mcpClientInstance) return mcpClientInstance;
+  if (hasAttemptedMCPConnection) return null;
+
+  hasAttemptedMCPConnection = true;
+
+  if (!fs.existsSync(mcpServerPath)) {
+    console.log(`[MCP] Gmail MCP server script not found at ${mcpServerPath}. Bypassing MCP connection.`);
+    return null;
+  }
 
   try {
     const transport = new StdioClientTransport({

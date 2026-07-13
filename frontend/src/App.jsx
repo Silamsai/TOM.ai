@@ -12,6 +12,7 @@ import TodoList from './pages/TodoList';
 import GoogleCallback from './pages/GoogleCallback';
 import AdminPanel from './pages/AdminPanel';
 import Settings from './pages/Settings';
+import ImageGen from './pages/ImageGen';
 import Mascot from './components/Mascot';
 import './index.css';
 
@@ -48,6 +49,7 @@ const AnimatedRoutes = () => {
       <Route path="/forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
       <Route path="/auth/google/callback" element={<GoogleCallback />} />
       <Route path="/admin" element={<AdminPanel />} />
+      <Route path="/image-gen" element={<ImageGen />} />
       <Route
         path="*"
         element={
