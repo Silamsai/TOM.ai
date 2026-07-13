@@ -55,3 +55,4 @@ tmp/
 
 # Local data and configurations containing API keys
 backend/data/
+.vercel
