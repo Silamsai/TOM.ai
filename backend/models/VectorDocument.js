@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('../config/dbCompat');
 
 const vectorDocumentSchema = new mongoose.Schema(
   {

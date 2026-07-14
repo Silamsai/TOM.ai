@@ -8,7 +8,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
-const path = require('path');
+const path = require('node:path');
 const axios = require('axios');
 const ChatHistory = require('../models/ChatHistory');
 const Task = require('../models/Task');
@@ -16,45 +16,17 @@ const User = require('../models/User');
 const emailService = require('./emailService');
 const { buildRAGContext, searchPersonalDocuments } = require('./ragService');
 
-const fs = require('fs');
+const fs = require('node:fs');
 
 // ---- MCP Setup ----------------------------------------------------
-const mcpServerPath = path.join(__dirname, '../../MCP-servers/gmail-mcp/server.js');
+const mcpServerPath = '';
 let mcpClientInstance = null;
 let mcpTools = [];
 let hasAttemptedMCPConnection = false;
 
 async function getMCPClient() {
-  if (mcpClientInstance) return mcpClientInstance;
-  if (hasAttemptedMCPConnection) return null;
-
-  hasAttemptedMCPConnection = true;
-
-  if (!fs.existsSync(mcpServerPath)) {
-    console.log(`[MCP] Gmail MCP server script not found at ${mcpServerPath}. Bypassing MCP connection.`);
-    return null;
-  }
-
-  try {
-    const transport = new StdioClientTransport({
-      command: 'node',
-      args: [mcpServerPath]
-    });
-
-    const client = new Client({ name: 'tom-ai-backend', version: '1.0.0' }, { capabilities: {} });
-    await client.connect(transport);
-    mcpClientInstance = client;
-
-    const toolsResponse = await client.listTools();
-    mcpTools = toolsResponse.tools;
-    console.log(`[MCP] Connected to Gmail MCP. Found ${mcpTools.length} tools.`);
-  } catch (error) {
-    console.error(`[MCP] Failed to connect to MCP server:`, error.message);
-    // Don't crash the whole app if MCP fails, just return null so Gemini runs without it
-    mcpClientInstance = null;
-  }
-
-  return mcpClientInstance;
+  console.log('[MCP] Local Stdio MCP is disabled in Cloudflare Workers serverless environment.');
+  return null;
 }
 
 const mcpToGeminiType = (type) => {

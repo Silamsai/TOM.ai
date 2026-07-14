@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('../config/dbCompat');
 const { OTP_VALIDITY_MINUTES } = require('../config/constants');
 
 const tempOTPSchema = new mongoose.Schema({

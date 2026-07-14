@@ -1,9 +1,8 @@
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
-const express = require('express');
-const cors = require('cors');
+const { Hono } = require('hono');
+const { cors } = require('hono/cors');
 const connectDB = require('./config/database');
-const errorHandler = require('./middleware/errorHandler');
+const { setGlobalEnv, dbStorage } = require('./config/dbCompat');
+const { toHonoHandler } = require('./config/expressCompat');
 
 // ---- Route Imports --------------------------------------------------------
 const authRoutes = require('./routes/auth');
@@ -18,137 +17,211 @@ const userRoutes = require('./routes/user');
 const ragRoutes = require('./routes/rag');
 const imageRoutes = require('./routes/image');
 
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-// ---- Start Background Jobs ------------------------------------------------
-const { startCronJobs } = require('./services/cronJobs');
-startCronJobs();
-
+const app = new Hono();
 
 // ============================================================
-// Middleware
+// CORS Configuration
 // ============================================================
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://tom-ai-one.vercel.app',
-  process.env.FRONTEND_URL
-].filter(Boolean);
+app.use('*', cors({
+  origin: (origin, c) => {
+    const frontendUrl = c.env.FRONTEND_URL || process.env.FRONTEND_URL;
+    const origins = [
+      'http://localhost:3000',
+      'https://localhost:3000'
+    ];
+    if (frontendUrl) origins.push(frontendUrl);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, false); // or return callback(new Error('Not allowed by CORS'))
+    if (origin && (origins.includes(origin) || origin.endsWith('.vercel.app'))) {
+      return origin;
+    }
+    return origins[0];
+  },
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 600,
+}));
+
+// ============================================================
+// Database & Env Bindings Middleware
+// ============================================================
+let dbConnected = false;
+
+app.use('*', async (c, next) => {
+  // Bind Hono Context environment secrets to global process.env
+  setGlobalEnv(c.env);
+
+  const store = { db: null, client: null };
+  return dbStorage.run(store, async () => {
+    // Lazily connect to MongoDB if not connected
+    if (!dbConnected) {
+      try {
+        await connectDB();
+        dbConnected = true;
+      } catch (e) {
+        console.error('[Database Lazy Connect Failed]:', e.message);
       }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
+    }
 
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Simple request logger
-app.use((req, _res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  next();
-});
-
-// ============================================================
-// Routes
-// ============================================================
-app.use('/api/auth', authRoutes);
-app.use('/api/auth/google', googleAuthRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/tasks', taskRoutes);
-app.use('/api/reminders', reminderRoutes);
-app.use('/api/oauth', oauthRoutes);
-app.use('/api/gmail', gmailRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/user', userRoutes);
-
-// RAG routes — wrapped in try-catch so module-load issues don't crash the whole server
-try {
-  app.use('/api/rag', ragRoutes);
-  console.log('✅ /api/rag routes registered.');
-} catch (ragErr) {
-  console.error('❌ Failed to register /api/rag routes:', ragErr.message);
-}
-
-// Image generation routes
-try {
-  app.use('/api/image', imageRoutes);
-  console.log('✅ /api/image routes registered.');
-} catch (imgErr) {
-  console.error('❌ Failed to register /api/image routes:', imgErr.message);
-}
-
-// Health check
-app.get('/api/health', (_req, res) => {
-  res.status(200).json({ success: true, message: '🤖 TOM.AI backend is running.', timestamp: new Date().toISOString() });
-});
-
-// 404 handler (must be after all routes)
-app.use((_req, res) => {
-  res.status(404).json({ success: false, message: 'Route not found.' });
-});
-
-// Global error handler (must be last)
-app.use(errorHandler);
-
-// ============================================================
-// Start Server
-// ============================================================
-const startServer = async () => {
-  // Validate critical env variables
-  const criticalEnvVars = [
-    'MONGODB_URI',
-    'GEMINI_API_KEY',
-    'GOOGLE_CLIENT_ID',
-    'GOOGLE_CLIENT_SECRET'
-  ];
-  console.log('\n🔍 Verifying Environment Variables:');
-  criticalEnvVars.forEach(v => {
-    if (!process.env[v]) {
-      console.warn(`  ⚠️  [WARN] ${v} is missing or empty!`);
-    } else {
-      const maskedVal = process.env[v].length > 10
-        ? `${process.env[v].substring(0, 6)}...${process.env[v].substring(process.env[v].length - 4)}`
-        : 'set';
-      console.log(`  ✅  ${v} is loaded (${maskedVal})`);
+    try {
+      await next();
+    } finally {
+      if (store.client) {
+        try {
+          await store.client.close();
+        } catch (e) {
+          console.error('[Database Context Cleanup Failed]:', e.message);
+        }
+      }
     }
   });
-  console.log('');
+});
 
-  await connectDB();
+// Simple Request Logger
+app.use('*', async (c, next) => {
+  console.log(`[${new Date().toISOString()}] ${c.req.method} ${c.req.path}`);
+  await next();
+});
 
-  const server = app.listen(PORT, () => {
-    console.log(`\n🤖 TOM.AI Backend`);
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`📡 API: http://localhost:${PORT}/api\n`);
-  });
+// ============================================================
+// Mount Express Route Mocks
+// ============================================================
+const mountRouter = (honoInstance, routePath, expressRouter) => {
+  const routerSub = new Hono();
 
-  // Graceful shutdown
-  const shutdown = (signal) => {
-    console.log(`\n${signal} received. Shutting down gracefully...`);
-    server.close(() => {
-      console.log('HTTP server closed.');
-      process.exit(0);
-    });
-    setTimeout(() => process.exit(1), 10000); // Force exit after 10s
-  };
+  for (const r of expressRouter.honoRoutes) {
+    const { method, path, handlers } = r;
+    const honoHandlers = handlers.map(h => toHonoHandler(h));
 
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+    if (method === 'use') {
+      routerSub.use(path, ...honoHandlers);
+    } else {
+      routerSub[method](path, ...honoHandlers);
+    }
+  }
+
+  honoInstance.route(routePath, routerSub);
 };
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
+mountRouter(app, '/api/auth', authRoutes);
+mountRouter(app, '/api/auth/google', googleAuthRoutes);
+mountRouter(app, '/api/chat', chatRoutes);
+mountRouter(app, '/api/tasks', taskRoutes);
+mountRouter(app, '/api/reminders', reminderRoutes);
+mountRouter(app, '/api/oauth', oauthRoutes);
+mountRouter(app, '/api/gmail', gmailRoutes);
+mountRouter(app, '/api/admin', adminRoutes);
+mountRouter(app, '/api/user', userRoutes);
+mountRouter(app, '/api/rag', ragRoutes);
+mountRouter(app, '/api/image', imageRoutes);
+
+// Health Check
+app.get('/api/health', (c) => {
+  return c.json({
+    success: true,
+    message: '🤖 TOM.AI backend is running.',
+    timestamp: new Date().toISOString()
+  });
 });
+
+// 404 Handler
+app.notFound((c) => {
+  return c.json({ success: false, message: 'Route not found.' }, 404);
+});
+
+// Global Error Handler
+app.onError((err, c) => {
+  console.error(`[ERROR] ${c.req.method} ${c.req.path}:`, err);
+
+  let status = err.status || err.statusCode || 500;
+  let success = false;
+  let message = err.message || 'An unexpected server error occurred.';
+  let errors = undefined;
+
+  if (err.name === 'ValidationError') {
+    status = 400;
+    message = 'Validation error';
+    errors = Object.values(err.errors || {}).map((e) => e.message);
+  } else if (err.code === 11000) {
+    status = 400;
+    const field = Object.keys(err.keyValue || {})[0] || 'field';
+    message = `A record with this ${field} already exists.`;
+  } else if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+    status = 401;
+    message = 'Invalid or expired authentication token.';
+  } else if (err.message && err.message.toLowerCase().includes('cors')) {
+    status = 403;
+    message = 'CORS policy violation.';
+  } else if (status === 404) {
+    message = err.message || 'Resource not found.';
+  }
+
+  // Check environment to determine if we should return actual error details
+  const isDev = (c.env.NODE_ENV || process.env.NODE_ENV) === 'development';
+  if (isDev) {
+    message = `${err.message || err}`;
+    errors = err.stack ? err.stack.split('\n') : undefined;
+  } else {
+    // Check if the message contains sensitive API strings
+    const lowerMsg = message.toLowerCase();
+    if (
+      lowerMsg.includes('api_key') ||
+      lowerMsg.includes('api key') ||
+      lowerMsg.includes('apikey') ||
+      lowerMsg.includes('gemini') ||
+      lowerMsg.includes('google')
+    ) {
+      message = 'AI brain not working, please wait.';
+    }
+  }
+
+  // Explicitly apply CORS headers on error response
+  const originHeader = c.req.header('Origin');
+  const frontendUrl = c.env.FRONTEND_URL || process.env.FRONTEND_URL;
+  const origins = [
+    'http://localhost:3000',
+    'https://localhost:3000',
+  ];
+  if (frontendUrl) origins.push(frontendUrl);
+  let allowedOrigin = '*';
+  if (originHeader) {
+    if (origins.includes(originHeader) || originHeader.endsWith('.vercel.app')) {
+      allowedOrigin = originHeader;
+    }
+  }
+  c.header('Access-Control-Allow-Origin', allowedOrigin);
+  c.header('Access-Control-Allow-Credentials', 'true');
+  c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  return c.json({ success, message, ...(errors && { errors }) }, status);
+});
+
+// ============================================================
+// Worker Export Definition
+// ============================================================
+const workerExport = {
+  fetch(request, env, ctx) {
+    return app.fetch(request, env, ctx);
+  },
+  async scheduled(event, env, ctx) {
+    // Bind Hono Context environment secrets to global process.env
+    setGlobalEnv(env);
+
+    // Connect to DB for the scheduled task
+    try {
+      await connectDB();
+    } catch (e) {
+      console.error('[Scheduled Trigger DB Connect Failed]:', e.message);
+    }
+
+    const { checkReminders, cleanupOldTasks } = require('./services/cronJobs');
+    if (event.cron === "0 0 * * *") {
+      await cleanupOldTasks();
+    } else {
+      await checkReminders();
+    }
+  }
+};
+
+export default workerExport;

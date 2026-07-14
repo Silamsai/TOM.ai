@@ -1,12 +1,8 @@
-const express = require('express');
+const express = require('../config/expressCompat');
 const router = express.Router();
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const jwt = require('jsonwebtoken');
-
-const DATA_DIR = path.join(__dirname, '../data');
-const CONFIG_PATH = path.join(DATA_DIR, 'admin-config.json');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin@tomai.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
@@ -74,79 +70,85 @@ const DEFAULT_CONFIG = {
 
 let configCache = null;
 
-const readConfig = () => {
+const readConfig = async () => {
   if (configCache) return configCache;
   try {
-    if (fs.existsSync(CONFIG_PATH)) {
-      const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-      // Migrate legacy single apiKey to new apiKeys map
-      let aiMerged = { ...DEFAULT_CONFIG.ai, ...raw.ai };
+    const db = await require('../config/dbCompat').getDB(process.env);
+    const col = db.collection('configs');
+    const doc = await col.findOne({ _id: 'admin-config' });
+
+    if (doc) {
+      let aiMerged = { ...DEFAULT_CONFIG.ai, ...doc.ai };
       if (!aiMerged.apiKeys) aiMerged.apiKeys = {};
-      if (raw.ai && raw.ai.apiKey && !aiMerged.apiKeys[aiMerged.provider]) {
-        aiMerged.apiKeys[aiMerged.provider] = raw.ai.apiKey;
+      if (doc.ai && doc.ai.apiKey && !aiMerged.apiKeys[aiMerged.provider]) {
+        aiMerged.apiKeys[aiMerged.provider] = doc.ai.apiKey;
       }
 
       let modified = false;
-      if (raw.ai && raw.ai.hasOwnProperty('apiKey')) {
+      if (doc.ai && doc.ai.hasOwnProperty('apiKey')) {
         delete aiMerged.apiKey;
         modified = true;
       }
 
-      // Seed from process.env if not configured in JSON yet
       if (!aiMerged.apiKeys.gemini && process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here' && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_starting_with_AIza') {
         aiMerged.apiKeys.gemini = process.env.GEMINI_API_KEY;
         modified = true;
       }
 
       configCache = {
-        ...DEFAULT_CONFIG, ...raw,
+        ...DEFAULT_CONFIG,
+        ...doc,
         ai: aiMerged,
-        rag: { ...DEFAULT_CONFIG.rag, ...raw.rag },
-        profile: { ...DEFAULT_CONFIG.profile, ...raw.profile },
+        rag: { ...DEFAULT_CONFIG.rag, ...doc.rag },
+        profile: { ...DEFAULT_CONFIG.profile, ...doc.profile },
       };
 
       if (modified) {
-        writeConfig(configCache);
+        await writeConfig(configCache);
       }
+
+      applyApiKeysToEnv(configCache.ai);
       return configCache;
     }
-  } catch (e) { console.error('[admin] config read error:', e.message); }
+  } catch (e) {
+    console.error('[admin] config db read error:', e.message);
+  }
 
-  // If config doesn't exist, build from DEFAULT_CONFIG and seed gemini if available
   let aiMerged = { ...DEFAULT_CONFIG.ai };
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here' && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_starting_with_AIza') {
     aiMerged.apiKeys = { gemini: process.env.GEMINI_API_KEY };
   }
   configCache = { ...DEFAULT_CONFIG, ai: aiMerged };
-  // Save it immediately so file is created
+
   try {
-    writeConfig(configCache);
-  } catch (e) { console.error('[admin] config write error on startup:', e.message); }
+    const db = await require('../config/dbCompat').getDB(process.env);
+    const col = db.collection('configs');
+    await col.updateOne({ _id: 'admin-config' }, { $set: configCache }, { upsert: true });
+  } catch (e) {
+    console.error('[admin] config db write error on startup:', e.message);
+  }
+
+  applyApiKeysToEnv(configCache.ai);
   return configCache;
 };
 
-const writeConfig = (cfg) => {
+const writeConfig = async (cfg) => {
   configCache = cfg;
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
+  try {
+    const db = await require('../config/dbCompat').getDB(process.env);
+    const col = db.collection('configs');
+    await col.updateOne({ _id: 'admin-config' }, { $set: cfg }, { upsert: true });
+  } catch (e) {
+    console.error('[admin] config db write error:', e.message);
+  }
 };
 
-// Helper to apply all stored API keys to process.env (only if not already set)
 const applyApiKeysToEnv = (ai) => {
   const keys = ai.apiKeys || {};
   if (keys.gemini && !process.env.GEMINI_API_KEY) process.env.GEMINI_API_KEY = keys.gemini;
   if (keys.openai && !process.env.OPENAI_API_KEY) process.env.OPENAI_API_KEY = keys.openai;
   if (keys.anthropic && !process.env.ANTHROPIC_API_KEY) process.env.ANTHROPIC_API_KEY = keys.anthropic;
 };
-
-// Load config on startup to apply saved API keys to process.env immediately
-try {
-  const bootCfg = readConfig();
-  applyApiKeysToEnv(bootCfg.ai);
-  const keyCount = Object.keys(bootCfg.ai.apiKeys || {}).length;
-  console.log(`🔑 [TOM.AI Admin] Loaded ${keyCount} AI provider key(s) from config.`);
-} catch (bootErr) {
-  console.error('⚠️ [TOM.AI Admin] Failed to boot-load API keys:', bootErr.message);
-}
 
 const mask = (str) => str ? '•'.repeat(Math.min(str.length, 24)) : '';
 
@@ -179,16 +181,16 @@ router.post('/login', (req, res) => {
 });
 
 // GET /api/admin/mcps-public  — used by ChatSidebar (no auth needed)
-router.get('/mcps-public', (_req, res) => {
-  const cfg = readConfig();
+router.get('/mcps-public', async (_req, res) => {
+  const cfg = await readConfig();
   const safe = (cfg.mcps || []).map(({ id, name, desc, icon }) => ({ id, name, desc, icon }));
   res.json({ success: true, data: safe });
 });
 
 // GET /api/admin/ai-models-public — returns only providers that have a configured API key
 // Used by the Chat page to populate the model dropdown dynamically
-router.get('/ai-models-public', (_req, res) => {
-  const cfg = readConfig();
+router.get('/ai-models-public', async (_req, res) => {
+  const cfg = await readConfig();
   const keys = cfg.ai.apiKeys || {};
   // Only return providers that have an API key set
   const available = ALL_PROVIDERS
@@ -206,8 +208,8 @@ router.get('/ai-providers-catalogue', (_req, res) => {
 router.use(adminAuth);
 
 // GET /api/admin/config
-router.get('/config', (_req, res) => {
-  const cfg = readConfig();
+router.get('/config', async (_req, res) => {
+  const cfg = await readConfig();
   res.json({
     success: true,
     data: {
@@ -219,42 +221,42 @@ router.get('/config', (_req, res) => {
 });
 
 /* ── MCPs ─────────────────────────── */
-router.get('/mcps', (_req, res) => {
-  const cfg = readConfig();
+router.get('/mcps', async (_req, res) => {
+  const cfg = await readConfig();
   res.json({ success: true, data: cfg.mcps.map(m => ({ ...m, apiKey: mask(m.apiKey) })) });
 });
 
-router.post('/mcps', (req, res) => {
+router.post('/mcps', async (req, res) => {
   const { name, desc = '', icon = '', apiKey = '', connectionString = '' } = req.body || {};
   if (!name) return res.status(400).json({ success: false, message: 'Name is required' });
-  const cfg = readConfig();
+  const cfg = await readConfig();
   const id = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
   cfg.mcps.push({ id, name, desc, icon, apiKey, connectionString });
-  writeConfig(cfg);
+  await writeConfig(cfg);
   res.json({ success: true, data: cfg.mcps.map(m => ({ ...m, apiKey: mask(m.apiKey) })) });
 });
 
-router.put('/mcps/:id', (req, res) => {
-  const cfg = readConfig();
+router.put('/mcps/:id', async (req, res) => {
+  const cfg = await readConfig();
   const idx = cfg.mcps.findIndex(m => m.id === req.params.id);
   if (idx === -1) return res.status(404).json({ success: false, message: 'MCP not found' });
   const upd = { ...cfg.mcps[idx], ...req.body };
   if (req.body.apiKey && req.body.apiKey.includes('•')) upd.apiKey = cfg.mcps[idx].apiKey; // keep original if masked
   cfg.mcps[idx] = upd;
-  writeConfig(cfg);
+  await writeConfig(cfg);
   res.json({ success: true, data: { ...cfg.mcps[idx], apiKey: mask(cfg.mcps[idx].apiKey) } });
 });
 
-router.delete('/mcps/:id', (req, res) => {
-  const cfg = readConfig();
+router.delete('/mcps/:id', async (req, res) => {
+  const cfg = await readConfig();
   cfg.mcps = cfg.mcps.filter(m => m.id !== req.params.id);
-  writeConfig(cfg);
+  await writeConfig(cfg);
   res.json({ success: true, data: cfg.mcps.map(m => ({ ...m, apiKey: mask(m.apiKey) })) });
 });
 
 /* ── AI ───────────────────────────── */
-router.get('/ai', (_req, res) => {
-  const cfg = readConfig();
+router.get('/ai', async (_req, res) => {
+  const cfg = await readConfig();
   // Mask all stored keys before sending to client
   const maskedKeys = {};
   Object.entries(cfg.ai.apiKeys || {}).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
@@ -262,31 +264,31 @@ router.get('/ai', (_req, res) => {
 });
 
 // PUT /api/admin/ai — update active provider/model
-router.put('/ai', (req, res) => {
-  const cfg = readConfig();
+router.put('/ai', async (req, res) => {
+  const cfg = await readConfig();
   const { provider, model } = req.body || {};
   if (provider) cfg.ai.provider = provider;
   if (model) cfg.ai.model = model;
-  writeConfig(cfg);
+  await writeConfig(cfg);
   const maskedKeys = {};
   Object.entries(cfg.ai.apiKeys || {}).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
   res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: ALL_PROVIDERS } });
 });
 
 // POST /api/admin/ai/keys — add or update a provider API key
-router.post('/ai/keys', (req, res) => {
+router.post('/ai/keys', async (req, res) => {
   const { providerId, apiKey, model } = req.body || {};
   if (!providerId) return res.status(400).json({ success: false, message: 'providerId is required' });
   if (!apiKey || apiKey.includes('•')) return res.status(400).json({ success: false, message: 'A valid API key is required' });
   const provider = ALL_PROVIDERS.find(p => p.id === providerId);
   if (!provider) return res.status(400).json({ success: false, message: 'Unknown provider' });
-  const cfg = readConfig();
+  const cfg = await readConfig();
   if (!cfg.ai.apiKeys) cfg.ai.apiKeys = {};
   cfg.ai.apiKeys[providerId] = apiKey;
   // If a default model is provided, use it; otherwise use the first model of the provider
   if (model) cfg.ai.model = model;
   if (!cfg.ai.model && provider.models.length) cfg.ai.model = provider.models[0].id;
-  writeConfig(cfg);
+  await writeConfig(cfg);
   applyApiKeysToEnv(cfg.ai);
   const maskedKeys = {};
   Object.entries(cfg.ai.apiKeys).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
@@ -294,9 +296,9 @@ router.post('/ai/keys', (req, res) => {
 });
 
 // DELETE /api/admin/ai/keys/:providerId — remove a provider API key
-router.delete('/ai/keys/:providerId', (req, res) => {
+router.delete('/ai/keys/:providerId', async (req, res) => {
   const { providerId } = req.params;
-  const cfg = readConfig();
+  const cfg = await readConfig();
   if (cfg.ai.apiKeys) delete cfg.ai.apiKeys[providerId];
   // If the active provider was removed, fall back to the first provider that still has a key
   if (cfg.ai.provider === providerId) {
@@ -305,24 +307,24 @@ router.delete('/ai/keys/:providerId', (req, res) => {
     const fallbackProvider = ALL_PROVIDERS.find(p => p.id === cfg.ai.provider);
     cfg.ai.model = fallbackProvider?.models[0]?.id || 'gemini-2.5-flash';
   }
-  writeConfig(cfg);
+  await writeConfig(cfg);
   const maskedKeys = {};
   Object.entries(cfg.ai.apiKeys || {}).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
   res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: ALL_PROVIDERS } });
 });
 
 /* ── RAG ──────────────────────────── */
-router.get('/rag', (_req, res) => res.json({ success: true, data: readConfig().rag }));
-router.put('/rag', (req, res) => {
-  const cfg = readConfig(); cfg.rag = { ...cfg.rag, ...req.body };
-  writeConfig(cfg); res.json({ success: true, data: cfg.rag });
+router.get('/rag', async (_req, res) => res.json({ success: true, data: (await readConfig()).rag }));
+router.put('/rag', async (req, res) => {
+  const cfg = await readConfig(); cfg.rag = { ...cfg.rag, ...req.body };
+  await writeConfig(cfg); res.json({ success: true, data: cfg.rag });
 });
 
 /* ── Profile ──────────────────────── */
-router.get('/profile', (_req, res) => res.json({ success: true, data: readConfig().profile }));
-router.put('/profile', (req, res) => {
-  const cfg = readConfig(); cfg.profile = { ...cfg.profile, ...req.body };
-  writeConfig(cfg); res.json({ success: true, data: cfg.profile });
+router.get('/profile', async (_req, res) => res.json({ success: true, data: (await readConfig()).profile }));
+router.put('/profile', async (req, res) => {
+  const cfg = await readConfig(); cfg.profile = { ...cfg.profile, ...req.body };
+  await writeConfig(cfg); res.json({ success: true, data: cfg.profile });
 });
 
 router.put('/change-password', (req, res) => {

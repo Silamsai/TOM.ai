@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('../config/expressCompat');
 const router = express.Router();
 const User = require('../models/User');
 const ChatHistory = require('../models/ChatHistory');

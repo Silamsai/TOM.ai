@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('../config/expressCompat');
 const router = express.Router();
 const {
   getGoogleAuthUrl,
@@ -102,7 +102,7 @@ router.post('/callback', async (req, res, next) => {
         if (picture && !user.picture) user.picture = picture;
         user.lastLoginMethod = 'google';
         user.lastLogin = new Date();
-        
+
         if (hasGmailScope) {
           user.tokens = user.tokens || {};
           user.tokens.gmail = access_token;

@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const { randomUUID } = require('crypto');
+const mongoose = require('../config/dbCompat');
+const { randomUUID } = require('node:crypto');
 
 const chatHistorySchema = new mongoose.Schema(
   {

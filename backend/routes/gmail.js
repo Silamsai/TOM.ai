@@ -4,7 +4,7 @@
  * Requires Gmail API enabled in Google Cloud Console.
  */
 
-const express = require('express');
+const express = require('../config/expressCompat');
 const router = express.Router();
 const axios = require('axios');
 const authMiddleware = require('../middleware/auth');
@@ -38,9 +38,9 @@ const fetchEmails = async (accessToken, query = '', maxResults = 10) => {
         const get = (name) => headers.find(h => h.name === name)?.value || '';
         return {
           id,
-          from:    get('From'),
+          from: get('From'),
           subject: get('Subject'),
-          date:    get('Date'),
+          date: get('Date'),
           snippet: res.data.snippet || '',
         };
       } catch { return null; }
@@ -100,11 +100,14 @@ router.get('/emails', authMiddleware, async (req, res) => {
     if (emails && emails.length > 0) {
       try {
         const { indexEmail } = require('../services/ragService');
-        emails.forEach((email) => {
-          indexEmail(req.userId, email).catch((e) =>
+        const promises = emails.map((email) => {
+          return indexEmail(req.userId, email).catch((e) =>
             console.error('[RAG] Index email error:', e.message)
           );
         });
+        if (typeof req.waitUntil === 'function') {
+          req.waitUntil(Promise.all(promises));
+        }
       } catch (e) {
         console.error('[RAG] Index email import error:', e);
       }

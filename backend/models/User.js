@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('../config/dbCompat');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { JWT_EXPIRY } = require('../config/constants');

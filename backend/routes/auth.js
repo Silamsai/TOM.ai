@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('../config/expressCompat');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 
@@ -226,7 +226,10 @@ router.post('/reset-password', async (req, res, next) => {
     await user.save();
 
     // Confirmation email is best-effort
-    trySendOTP(sendConfirmationEmail, normalizedEmail, '').catch(() => {});
+    const runSend = trySendOTP(sendConfirmationEmail, normalizedEmail, '').catch(() => { });
+    if (typeof req.waitUntil === 'function') {
+      req.waitUntil(runSend);
+    }
 
     res.status(200).json({ success: true, message: 'Password reset successfully. You can now log in.' });
   } catch (error) {
