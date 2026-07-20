@@ -162,4 +162,18 @@ export const getRagDocuments = () => api.get('/rag/documents');
 /** Delete a document and all its indexed vector chunks. */
 export const deleteRagDocument = (id) => api.delete(`/rag/documents/${id}`);
 
+// ============================================================
+// IMAGE GENERATION
+// ============================================================
+
+/**
+ * Generate an image from a text prompt.
+ * Returns raw image bytes (arraybuffer).
+ */
+export const generateImage = (data) =>
+  api.post('/image/generate', data, { responseType: 'arraybuffer', timeout: 120000 });
+
+/** Get available image models, styles, and aspect ratios. */
+export const getImageModels = () => api.get('/image/models');
+
 export default api;

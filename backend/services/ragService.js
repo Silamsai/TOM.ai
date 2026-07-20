@@ -114,7 +114,7 @@ const performVectorSearch = (docs, queryEmbedding, k, threshold) => {
 
     let dotProduct = 0.0;
     let normB = 0.0;
-    
+
     // Single-pass computation for dot product and doc norm
     const len = Math.min(queryEmbedding.length, vecB.length);
     for (let j = 0; j < len; j++) {
@@ -157,6 +157,10 @@ const performVectorSearch = (docs, queryEmbedding, k, threshold) => {
 const searchDocuments = async (userId, query, k = 4) => {
   if (!query || !query.trim()) return [];
   try {
+    // Quick check to avoid generating embeddings if the database is empty for this user
+    const docCount = await VectorDocument.countDocuments({ userId });
+    if (docCount === 0) return [];
+
     const queryEmbedding = await getEmbedding(query);
     const docs = await VectorDocument.find({ userId }).lean();
     return performVectorSearch(docs, queryEmbedding, k, 0.30);
@@ -193,6 +197,15 @@ const indexChatMessage = async (userId, userMessage, botResponse) => {
  */
 const buildRAGContext = async (userId, query) => {
   try {
+    const docCount = await VectorDocument.countDocuments({ userId });
+    if (docCount === 0) return '';
+
+    // Bypass embeddings for hello/greetings or very short queries to keep chat response instant
+    const cleanQuery = query.toLowerCase().trim();
+    if (cleanQuery.length < 4 || /^(hi|hello|hey|yo|sup|good morning|good afternoon|good evening|ok|yes|no|thanks|thank you)\b/.test(cleanQuery)) {
+      return '';
+    }
+
     const results = await searchDocuments(userId, query, 4);
     if (results.length === 0) return '';
 
@@ -215,6 +228,9 @@ const buildRAGContext = async (userId, query) => {
 const searchPersonalDocuments = async (userId, query, k = 6) => {
   if (!query || !query.trim()) return [];
   try {
+    const docCount = await VectorDocument.countDocuments({ userId, 'metadata.type': 'personal_doc' });
+    if (docCount === 0) return [];
+
     const queryEmbedding = await getEmbedding(query);
     const docs = await VectorDocument.find({ userId, 'metadata.type': 'personal_doc' }).lean();
     return performVectorSearch(docs, queryEmbedding, k, 0.0);

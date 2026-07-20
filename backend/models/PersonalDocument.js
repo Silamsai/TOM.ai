@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('../config/dbCompat');
 
 const personalDocumentSchema = new mongoose.Schema(
   {

@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('../config/expressCompat');
 const router = express.Router();
 const ChatHistory = require('../models/ChatHistory');
 const User = require('../models/User');
@@ -45,7 +45,10 @@ router.post('/message', async (req, res, next) => {
     // Index chat in RAG Vector Store
     try {
       const { indexChatMessage } = require('../services/ragService');
-      indexChatMessage(req.userId, message.trim(), response).catch(e => console.error('[RAG] Index chat error:', e));
+      const promise = indexChatMessage(req.userId, message.trim(), response).catch(e => console.error('[RAG] Index chat error:', e));
+      if (typeof req.waitUntil === 'function') {
+        req.waitUntil(promise);
+      }
     } catch (e) {
       console.error('[RAG] Index import error:', e);
     }

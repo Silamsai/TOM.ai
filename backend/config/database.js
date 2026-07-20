@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('./dbCompat');
 
 /**
  * Connects the application to MongoDB using Mongoose.
@@ -45,8 +45,7 @@ const connectDB = async () => {
     });
   } catch (error) {
     console.error(`❌ MongoDB connection error: ${error.message}`);
-    // Exit process with failure — Railway/PM2 will restart
-    process.exit(1);
+    throw error;
   }
 };
 

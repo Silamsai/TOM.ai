@@ -1,5 +1,4 @@
 const { Resend } = require('resend');
-const nodemailer = require('nodemailer');
 const axios = require('axios');
 const { OTP_VALIDITY_MINUTES } = require('../config/constants');
 
@@ -62,36 +61,9 @@ const sendMail = async ({ from, to, subject, html }) => {
     }
   }
 
-  // ── 3. Gmail SMTP Fallback (Local Dev only) ──
-  console.warn('[EmailService] No HTTP Email API keys configured — using Gmail SMTP fallback');
-  const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    requireTLS: true,
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_PASS,
-    },
-    tls: { rejectUnauthorized: false },
-  });
-
-  for (let attempt = 0; attempt <= 2; attempt++) {
-    try {
-      await transporter.sendMail({
-        from: `"TOM.AI" <${process.env.GMAIL_USER}>`,
-        to,
-        subject,
-        html
-      });
-      console.log(`[EmailService] ✅ Email sent via Gmail SMTP fallback to: ${to}`);
-      return;
-    } catch (err) {
-      console.error(`[EmailService] Gmail SMTP attempt ${attempt + 1} failed:`, err.message);
-      if (attempt === 2) throw err;
-      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
-    }
-  }
+  // ── 3. Fallback warning ──
+  console.warn('[EmailService] SMTP fallback is not supported in serverless workers. Please configure SendGrid or Resend API keys.');
+  throw new Error('Email service not configured (no SendGrid or Resend credentials).');
 };
 
 // ---- HTML Templates ---------------------------------------------------------
@@ -290,10 +262,10 @@ const sendTaskCreatedEmail = async (email, task) => {
   });
 };
 
-module.exports = { 
-  sendOTPEmail, 
-  sendPasswordResetEmail, 
-  sendConfirmationEmail, 
+module.exports = {
+  sendOTPEmail,
+  sendPasswordResetEmail,
+  sendConfirmationEmail,
   sendTaskReminderEmail,
   sendTaskCreatedEmail
 };

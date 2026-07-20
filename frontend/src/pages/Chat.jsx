@@ -744,6 +744,31 @@ const Chat = () => {
                 </button>
               )}
 
+              {/* Generate Image pill */}
+              {chatMode !== 'personal' && (
+                <button
+                  className="chat-pill-btn"
+                  onClick={() => {
+                    setInput(prev => {
+                      const prefix = "Generate an image of ";
+                      if (prev.startsWith(prefix)) return prev;
+                      return prefix + prev;
+                    });
+                    setTimeout(() => {
+                      if (textareaRef.current) {
+                        textareaRef.current.focus();
+                      }
+                    }, 50);
+                  }}
+                  type="button"
+                  title="Generate Image with AI"
+                  style={{ color: '#ec4899', borderColor: 'rgba(236,72,153,0.4)', background: 'rgba(236,72,153,0.08)', gap: '4px' }}
+                >
+                  <Sparkles size={11} style={{ color: '#ec4899' }} />
+                  <span>Generate Image</span>
+                </button>
+              )}
+
               {/* Model selector pill */}
               {chatMode !== 'personal' && (
                 <div className="chat-model-select-wrapper" ref={modelDropdownRef}>

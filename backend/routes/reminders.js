@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('../config/expressCompat');
 const router = express.Router();
 const Reminder = require('../models/Reminder');
 const authMiddleware = require('../middleware/auth');

@@ -51,7 +51,7 @@ const mathReply = (msg) => {
         const pretty = parseFloat(result.toFixed(8));
         return `**${clean} = ${pretty}** 🔢\n\nNeed help with another calculation?`;
       }
-    } catch (_) {}
+    } catch (_) { }
   }
   return `I can help with math! Share the equation or problem and I'll solve it step by step — arithmetic, algebra, percentages, or logic puzzles.`;
 };
@@ -166,6 +166,15 @@ const defaultReply = (msg) => {
 export const generateGuestResponse = async (userMessage) => {
   const msg = userMessage.toLowerCase().trim();
   await sleep(500 + Math.random() * 700);
+
+  if (/\b(generate|draw|create|make|show|paint)\b.*\b(image|picture|photo|sketch|painting|illustration|drawing|art)\b/i.test(userMessage) ||
+    /^(draw|paint|sketch|generate an image of)\b/i.test(userMessage)) {
+    // Extract the prompt details
+    let promptSubject = userMessage.replace(/\b(generate|draw|create|make|show|paint)\b.*\b(image|picture|photo|sketch|painting|illustration|drawing|art)\b/gi, '').trim();
+    if (promptSubject.toLowerCase().startsWith('of ')) promptSubject = promptSubject.slice(3).trim();
+    if (!promptSubject) promptSubject = userMessage.trim();
+    return `Here is the generated image for "**${promptSubject}**":\n\n![Generated Image](https://image.pollinations.ai/prompt/${encodeURIComponent(promptSubject)}?width=1024&height=1024&nologo=true)\n\n*(Note: You are in guest mode; sign in to use advanced AI models and customize styles!)*`;
+  }
 
   if (/^(hi|hello|hey|good (morning|afternoon|evening|night)|howdy|yo|sup)\b/.test(msg))
     return greetingReply();

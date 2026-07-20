@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('../config/expressCompat');
 const router = express.Router();
 const Task = require('../models/Task');
 const Reminder = require('../models/Reminder');
@@ -40,7 +40,10 @@ router.post('/create', async (req, res, next) => {
     // Index task in RAG
     try {
       const { indexTask } = require('../services/ragService');
-      indexTask(req.userId, task).catch(e => console.error('[RAG] Index task error:', e));
+      const promise = indexTask(req.userId, task).catch(e => console.error('[RAG] Index task error:', e));
+      if (typeof req.waitUntil === 'function') {
+        req.waitUntil(promise);
+      }
     } catch (e) {
       console.error('[RAG] Index task import error:', e);
     }
@@ -128,7 +131,10 @@ router.put('/update/:id', async (req, res, next) => {
     // Index updated task in RAG
     try {
       const { indexTask } = require('../services/ragService');
-      indexTask(req.userId, task).catch(e => console.error('[RAG] Index task error:', e));
+      const promise = indexTask(req.userId, task).catch(e => console.error('[RAG] Index task error:', e));
+      if (typeof req.waitUntil === 'function') {
+        req.waitUntil(promise);
+      }
     } catch (e) {
       console.error('[RAG] Index task import error:', e);
     }
@@ -152,7 +158,10 @@ router.put('/complete/:id', async (req, res, next) => {
     // Index completed task in RAG
     try {
       const { indexTask } = require('../services/ragService');
-      indexTask(req.userId, task).catch(e => console.error('[RAG] Index task error:', e));
+      const promise = indexTask(req.userId, task).catch(e => console.error('[RAG] Index task error:', e));
+      if (typeof req.waitUntil === 'function') {
+        req.waitUntil(promise);
+      }
     } catch (e) {
       console.error('[RAG] Index task import error:', e);
     }

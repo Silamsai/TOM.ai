@@ -53,7 +53,7 @@ const MCP_APPS = [
 export const ConnectModal = ({ onClose }) => {
   const [mcpApps, setMcpApps] = useState(MCP_APPS);
   const [connecting, setConnecting] = useState(null);
-  const [connected,  setConnected]  = useState([]);
+  const [connected, setConnected] = useState([]);
   const [gmailConnected, setGmailConnected] = useState(
     () => localStorage.getItem('tom_gmail_connected') === 'true'
   );
@@ -64,7 +64,7 @@ export const ConnectModal = ({ onClose }) => {
         const d = res.data;
         if (d.success && d.data && d.data.length > 0) setMcpApps(d.data);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleConnect = async (appId) => {
@@ -115,7 +115,7 @@ export const ConnectModal = ({ onClose }) => {
       <div className="mcp-modal" onClick={e => e.stopPropagation()}>
         <div className="mcp-header">
           <div className="mcp-title">
-            <img src="/images/logo.png" alt="tom.ai" width="22" height="22" style={{borderRadius:'6px',objectFit:'contain'}} />
+            <img src="/images/logo.png" alt="tom.ai" width="22" height="22" style={{ borderRadius: '6px', objectFit: 'contain' }} />
             <span>Connect</span>
           </div>
           <button className="mcp-close" onClick={onClose} aria-label="Close modal"><IconClose /></button>
@@ -127,9 +127,9 @@ export const ConnectModal = ({ onClose }) => {
 
         <div className="mcp-apps">
           {mcpApps.map(app => {
-            const isGmail    = app.id === 'gmail';
-            const isConn     = isGmail ? gmailConnected : connected.includes(app.id);
-            const isLoading  = connecting === app.id;
+            const isGmail = app.id === 'gmail';
+            const isConn = isGmail ? gmailConnected : connected.includes(app.id);
+            const isLoading = connecting === app.id;
             return (
               <div key={app.id} className={`mcp-app ${isConn ? 'mcp-app-connected' : ''}`}>
                 <span className="mcp-app-icon">{renderAppIcon(app.icon, app.name)}</span>
@@ -175,14 +175,14 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
   const [editTitleText, setEditTitleText] = useState('');
   const [showMore, setShowMore] = useState(false);
 
-  const user  = getUser();
+  const user = getUser();
   const guest = getGuestProfile();
 
   const initials = ((user?.name || guest?.name || 'G')
     .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2));
 
   const refresh = () => forceUpdate(n => n + 1);
-  const sessions  = getAllSessions();
+  const sessions = getAllSessions();
   const currentId = getCurrentId();
 
   const filteredSessions = searchQuery.trim()
@@ -203,7 +203,7 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
     e.stopPropagation();
     deleteSession(id);
     refresh();
-    if (isAuthenticated) deleteChatConversation(id).catch(() => {});
+    if (isAuthenticated) deleteChatConversation(id).catch(() => { });
     if (id === currentId) {
       const rest = getAllSessions();
       if (rest.length > 0) { setCurrentId(rest[0].id); onSessionChange(rest[0].id); }
@@ -238,13 +238,13 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
         {/* ── TOP: brand + collapse btn ── */}
         <div className="sidebar-top-bar">
           <div className="sidebar-brand">
-            <img src="/images/logo.png" alt="tom.ai" width="22" height="22" style={{borderRadius:'6px',objectFit:'contain'}} />
+            <img src="/images/logo.png" alt="tom.ai" width="22" height="22" style={{ borderRadius: '6px', objectFit: 'contain' }} />
             <span>tom.ai</span>
           </div>
           <button className="sidebar-icon-btn sidebar-collapse-btn" onClick={onClose} title="Close sidebar" aria-label="Close sidebar">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <line x1="9" y1="3" x2="9" y2="21"/>
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="9" y1="3" x2="9" y2="21" />
             </svg>
           </button>
         </div>
@@ -252,7 +252,7 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
         {/* ── NEW CHAT button ── */}
         <button id="sidebar-new-chat" className="sidebar-new-btn" onClick={handleNew}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
           </svg>
           New chat
         </button>
@@ -266,7 +266,7 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
           >
             <span className="sidebar-nav-icon">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
             </span>
             <span className="sidebar-nav-label">Search chats</span>
@@ -275,7 +275,7 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
           {showSearch && (
             <div className="sidebar-search-box">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
               <input
                 type="text"
@@ -301,10 +301,24 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
           >
             <span className="sidebar-nav-icon">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/>
+                <rect x="3" y="3" width="18" height="18" rx="3" /><path d="M9 12l2 2 4-4" />
               </svg>
             </span>
             <span className="sidebar-nav-label">Tasks</span>
+          </Link>
+
+          <Link
+            to="/image-gen"
+            className={`sidebar-nav-item${location.pathname === '/image-gen' ? ' active' : ''}`}
+            onClick={() => { if (window.innerWidth < 1024) onClose(); }}
+            title="Image Generator"
+          >
+            <span className="sidebar-nav-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+              </svg>
+            </span>
+            <span className="sidebar-nav-label">Image Gen</span>
           </Link>
 
           <button
@@ -314,7 +328,7 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
           >
             <span className="sidebar-nav-icon">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
               </svg>
             </span>
             <span className="sidebar-nav-label">Apps</span>
@@ -329,8 +343,8 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
               >
                 <span className="sidebar-nav-icon">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
                   </svg>
                 </span>
                 <span className="sidebar-nav-label">Connect</span>
@@ -345,7 +359,7 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
           >
             <span className="sidebar-nav-icon">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>
+                <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
               </svg>
             </span>
             <span className="sidebar-nav-label">{showMore ? 'Less' : 'More'}</span>
@@ -411,8 +425,8 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
           >
             <span className="sidebar-nav-icon">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </span>
             <span className="sidebar-nav-label">Settings</span>
@@ -434,7 +448,7 @@ const ChatSidebar = ({ isOpen, onClose, onSessionChange, onNewChat, isAuthentica
             {!isAuthenticated && (
               <Link to="/login" className="sidebar-upgrade-btn" title="Sign in">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" y1="12" x2="3" y2="12" />
                 </svg>
                 Upgrade
               </Link>

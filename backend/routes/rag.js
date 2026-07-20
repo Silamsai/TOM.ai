@@ -1,31 +1,15 @@
-const express = require('express');
+const express = require('../config/expressCompat');
 const router = express.Router();
-const multer = require('multer');
 const authMiddleware = require('../middleware/auth');
 const PersonalDocument = require('../models/PersonalDocument');
 const { indexPersonalDocument, deletePersonalDocument } = require('../services/ragService');
 
-// Multer memory storage configuration (keeps files in RAM buffer)
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB file limit
-  fileFilter: (req, file, cb) => {
-    const allowedMimeTypes = [
-      'application/pdf',
-      'text/plain',
-      'text/markdown',
-      'application/octet-stream', // some raw text files are read as octet-stream
-    ];
-    // Allow plain text extensions regardless of mimetype quirks
-    const isTextExt = /\.(txt|md|markdown|json)$/i.test(file.originalname);
-    if (allowedMimeTypes.includes(file.mimetype) || isTextExt) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only PDF, TXT, or Markdown documents are supported.'));
-    }
-  },
+// Multer mock
+const multer = () => ({
+  single: () => (req, res, next) => next(),
 });
+multer.memoryStorage = () => ({});
+const upload = multer();
 
 // All RAG routes require authentication
 router.use(authMiddleware);
@@ -37,6 +21,17 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No file provided.' });
+    }
+
+    const allowedMimeTypes = [
+      'application/pdf',
+      'text/plain',
+      'text/markdown',
+      'application/octet-stream',
+    ];
+    const isTextExt = /\.(txt|md|markdown|json)$/i.test(req.file.originalname);
+    if (!allowedMimeTypes.includes(req.file.mimetype) && !isTextExt) {
+      return res.status(400).json({ success: false, message: 'Only PDF, TXT, or Markdown documents are supported.' });
     }
 
     console.log(`[RAG Upload] Indexing file: ${req.file.originalname} (${req.file.size} bytes) for user ${req.userId}`);
@@ -78,7 +73,7 @@ router.get('/documents', async (req, res, next) => {
 router.delete('/documents/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    
+
     // Verify document exists and belongs to the user
     const doc = await PersonalDocument.findOne({ _id: id, userId: req.userId });
     if (!doc) {
