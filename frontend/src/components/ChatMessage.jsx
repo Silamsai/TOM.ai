@@ -1,6 +1,6 @@
 import React from 'react';
 import { formatTime } from '../utils/validators';
-import { CornerUpLeft, Copy, FileText, Check, Paperclip } from 'lucide-react';
+import { CornerUpLeft, Copy, FileText, Check, Paperclip, Download, ZoomIn, X } from 'lucide-react';
 import '../styles/components.css';
 import { jsPDF } from 'jspdf';
 
@@ -66,7 +66,7 @@ const CodeBlock = ({ lang, code }) => {
   );
 };
 
-const renderMarkdown = (text) => {
+const renderMarkdown = (text, onImageClick) => {
   if (!text) return '';
   const lines = text.split('\n');
   let inCode = false, codeLines = [], codeLang = '';
@@ -89,25 +89,105 @@ const renderMarkdown = (text) => {
     const inline = (str) => {
       const parts = []; let rem = str, k = 0;
       while (rem.length) {
-        const bb = rem.indexOf('**'), bt = rem.indexOf('`');
+        const bb = rem.indexOf('**');
+        const bt = rem.indexOf('`');
         const it = rem.search(/(?<!\*)\*(?!\*)/);
-        const mins = [bb, bt, it].filter(x => x >= 0);
+        const img = rem.indexOf('![');
+        const link = rem.indexOf('[');
+
+        const mins = [
+          { type: 'bb', idx: bb },
+          { type: 'bt', idx: bt },
+          { type: 'it', idx: it },
+          { type: 'img', idx: img },
+          { type: 'link', idx: (link === img + 1 && img !== -1) ? -1 : link }
+        ].filter(x => x.idx >= 0);
+
         if (!mins.length) { parts.push(<span key={k++}>{rem}</span>); break; }
-        const f = Math.min(...mins);
-        if (f > 0) parts.push(<span key={k++}>{rem.slice(0, f)}</span>);
-        if (f === bb && rem.startsWith('**', f)) {
-          const e = rem.indexOf('**', f + 2);
-          if (e > f) { parts.push(<strong key={k++}>{rem.slice(f + 2, e)}</strong>); rem = rem.slice(e + 2); continue; }
+
+        mins.sort((a, b) => a.idx - b.idx);
+        const first = mins[0];
+
+        if (first.idx > 0) {
+          parts.push(<span key={k++}>{rem.slice(0, first.idx)}</span>);
         }
-        if (f === bt) {
-          const e = rem.indexOf('`', f + 1);
-          if (e > f) { parts.push(<code key={k++} className="msg-inline-code">{rem.slice(f + 1, e)}</code>); rem = rem.slice(e + 1); continue; }
+
+        rem = rem.slice(first.idx);
+
+        if (first.type === 'bb' && rem.startsWith('**')) {
+          const e = rem.indexOf('**', 2);
+          if (e > 1) {
+            parts.push(<strong key={k++}>{rem.slice(2, e)}</strong>);
+            rem = rem.slice(e + 2);
+            continue;
+          }
         }
-        if (f === it) {
-          const e = rem.indexOf('*', f + 1);
-          if (e > f) { parts.push(<em key={k++}>{rem.slice(f + 1, e)}</em>); rem = rem.slice(e + 1); continue; }
+        if (first.type === 'bt' && rem.startsWith('`')) {
+          const e = rem.indexOf('`', 1);
+          if (e > 0) {
+            parts.push(<code key={k++} className="msg-inline-code">{rem.slice(1, e)}</code>);
+            rem = rem.slice(e + 1);
+            continue;
+          }
         }
-        parts.push(<span key={k++}>{rem[f]}</span>); rem = rem.slice(f + 1);
+        if (first.type === 'it' && rem.startsWith('*')) {
+          const e = rem.indexOf('*', 1);
+          if (e > 0) {
+            parts.push(<em key={k++}>{rem.slice(1, e)}</em>);
+            rem = rem.slice(e + 1);
+            continue;
+          }
+        }
+        if (first.type === 'img' && rem.startsWith('![')) {
+          const closeBracket = rem.indexOf(']');
+          if (closeBracket > 1) {
+            const openParen = rem.indexOf('(', closeBracket);
+            if (openParen === closeBracket + 1) {
+              const closeParen = rem.indexOf(')', openParen);
+              if (closeParen > openParen) {
+                const alt = rem.slice(2, closeBracket);
+                const url = rem.slice(openParen + 1, closeParen);
+                parts.push(
+                  <div
+                    key={k++}
+                    className="chat-msg-img-container"
+                    onClick={() => onImageClick && onImageClick(url)}
+                  >
+                    <img src={url} alt={alt} />
+                    <div className="chat-msg-img-hover-overlay">
+                      <ZoomIn size={20} color="#fff" />
+                    </div>
+                  </div>
+                );
+                rem = rem.slice(closeParen + 1);
+                continue;
+              }
+            }
+          }
+        }
+        if (first.type === 'link' && rem.startsWith('[')) {
+          const closeBracket = rem.indexOf(']');
+          if (closeBracket > 0) {
+            const openParen = rem.indexOf('(', closeBracket);
+            if (openParen === closeBracket + 1) {
+              const closeParen = rem.indexOf(')', openParen);
+              if (closeParen > openParen) {
+                const text = rem.slice(1, closeBracket);
+                const url = rem.slice(openParen + 1, closeParen);
+                parts.push(
+                  <a key={k++} href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8', textDecoration: 'underline' }}>
+                    {text}
+                  </a>
+                );
+                rem = rem.slice(closeParen + 1);
+                continue;
+              }
+            }
+          }
+        }
+
+        parts.push(<span key={k++}>{rem[0]}</span>);
+        rem = rem.slice(1);
       }
       return parts;
     };
@@ -156,6 +236,8 @@ const renderAttachments = (attachments) => {
 
 const ChatMessage = ({ message, type, timestamp, userPicture, userName, onReply, attachments }) => {
   const [isHovered, React_setIsHovered] = React.useState(false);
+  const [lightboxUrl, setLightboxUrl] = React.useState(null);
+
   const isUser = type === 'user';
   const initials = userName
     ? userName.trim().split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
@@ -211,6 +293,15 @@ const ChatMessage = ({ message, type, timestamp, userPicture, userName, onReply,
     }
   };
 
+  const handleDownloadImage = (e, url) => {
+    e.stopPropagation();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tomai-image-${Date.now()}.jpg`;
+    a.target = '_blank';
+    a.click();
+  };
+
   return (
     <div
       className={`message-row ${isUser ? 'user' : 'bot'}`}
@@ -229,7 +320,7 @@ const ChatMessage = ({ message, type, timestamp, userPicture, userName, onReply,
       </div>
       <div className="message-content-wrap">
         <div className="message-bubble">
-          {isUser ? message : renderMarkdown(message)}
+          {isUser ? message : renderMarkdown(message, setLightboxUrl)}
           {renderAttachments(attachments)}
         </div>
         <div className="message-meta-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
@@ -266,6 +357,98 @@ const ChatMessage = ({ message, type, timestamp, userPicture, userName, onReply,
           )}
         </div>
       </div>
+
+      {/* Glassmorphic Lightbox overlay */}
+      {lightboxUrl && (
+        <div
+          className="img-lightbox-overlay"
+          onClick={() => setLightboxUrl(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(5, 5, 8, 0.9)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            cursor: 'zoom-out'
+          }}
+        >
+          <div
+            style={{
+              position: 'relative',
+              maxWidth: '90%',
+              maxHeight: '90%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              animation: 'scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={lightboxUrl}
+              alt="Zoomed"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '80vh',
+                objectFit: 'contain',
+                borderRadius: '12px',
+                boxShadow: '0 24px 50px rgba(0, 0, 0, 0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}
+            />
+            <div style={{ marginTop: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <button
+                onClick={(e) => handleDownloadImage(e, lightboxUrl)}
+                style={{
+                  background: 'linear-gradient(135deg, #7c6cfc, #38bdf8)',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '10px 24px',
+                  borderRadius: '30px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 15px rgba(124, 108, 252, 0.3)',
+                  transition: 'transform 0.2s ease'
+                }}
+                className="img-lb-action-btn"
+              >
+                <Download size={14} />
+                Download
+              </button>
+              <button
+                onClick={() => setLightboxUrl(null)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  padding: '10px 20px',
+                  borderRadius: '30px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <X size={14} />
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
