@@ -48,6 +48,25 @@ router.post('/create', async (req, res, next) => {
       console.error('[RAG] Index task import error:', e);
     }
 
+    // Send task creation email
+    try {
+      const { sendTaskCreatedEmail } = require('../services/emailService');
+      const User = require('../models/User');
+      const emailPromise = (async () => {
+        const user = await User.findById(req.userId);
+        const email = req.userEmail || user?.email;
+        if (email) {
+          await sendTaskCreatedEmail(email, task);
+        }
+      })().catch(e => console.error('[EmailService] Task creation mail error:', e));
+
+      if (typeof req.waitUntil === 'function') {
+        req.waitUntil(emailPromise);
+      }
+    } catch (e) {
+      console.error('[EmailService] Task creation email trigger error:', e);
+    }
+
     res.status(201).json({ success: true, message: 'Task created successfully.', data: task });
   } catch (error) {
     next(error);
