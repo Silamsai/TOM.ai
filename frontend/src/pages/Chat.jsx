@@ -98,6 +98,34 @@ const getModelIcon = (iconName) => {
   }
 };
 
+const renderModelProviderIcon = (m, size = 13) => {
+  if (m.providerIcon) {
+    const t = String(m.providerIcon).trim();
+    if (t.startsWith('<svg')) {
+      return (
+        <span
+          style={{ width: size, height: size, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle' }}
+          dangerouslySetInnerHTML={{ __html: t }}
+        />
+      );
+    }
+    if (t.startsWith('data:') || t.startsWith('http') || t.startsWith('/')) {
+      return (
+        <img
+          src={t}
+          alt=""
+          style={{ width: size, height: size, objectFit: 'contain', verticalAlign: 'middle' }}
+        />
+      );
+    }
+    if (t.length > 0) {
+      return <span style={{ fontSize: `${size}px`, lineHeight: 1, verticalAlign: 'middle' }}>{t}</span>;
+    }
+  }
+
+  return getModelIcon(m.icon);
+};
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const ADMIN_API = `${API_BASE_URL}/admin`;
 
@@ -466,6 +494,7 @@ const Chat = () => {
               ...m,
               color: provider.color || '#38bdf8',
               providerName: provider.name,
+              providerIcon: provider.icon,
             }))
           );
           if (models.length > 0) setAvailableModels(models);
@@ -778,7 +807,13 @@ const Chat = () => {
                     type="button"
                     title="Choose AI Model"
                   >
-                    <span className="chat-model-dot" style={{ backgroundColor: currentModelObj.color, boxShadow: `0 0 5px ${currentModelObj.color}` }} />
+                    {currentModelObj.providerIcon ? (
+                      <span style={{ marginRight: '6px', display: 'inline-flex', alignItems: 'center' }}>
+                        {renderModelProviderIcon(currentModelObj, 12)}
+                      </span>
+                    ) : (
+                      <span className="chat-model-dot" style={{ backgroundColor: currentModelObj.color, boxShadow: `0 0 5px ${currentModelObj.color}` }} />
+                    )}
                     <span>{currentModelObj.shortName}</span>
                     <ChevronDown size={9} style={{ marginLeft: '1px', transform: showModelDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
                   </button>
@@ -798,7 +833,7 @@ const Chat = () => {
                             }}
                             type="button"
                           >
-                            <span className="chat-model-item-emoji">{getModelIcon(m.icon)}</span>
+                            <span className="chat-model-item-emoji">{renderModelProviderIcon(m, 13)}</span>
                             <div className="chat-model-item-body">
                               <div className="chat-model-item-name">
                                 {m.name}

@@ -6,23 +6,322 @@
  */
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
-const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
-const path = require('node:path');
-const axios = require('axios');
 const ChatHistory = require('../models/ChatHistory');
-const Task = require('../models/Task');
-const User = require('../models/User');
-const emailService = require('./emailService');
-const { buildRAGContext, searchPersonalDocuments } = require('./ragService');
-
+const { searchPersonalDocuments } = require('./ragService');
+const { buildRAGContext } = require('./ragService');
 const fs = require('node:fs');
+const axios = require('axios');
+const User = require('../models/User');
 
 // ---- MCP Setup ----------------------------------------------------
 const mcpServerPath = '';
 let mcpClientInstance = null;
 let mcpTools = [];
 let hasAttemptedMCPConnection = false;
+
+// ---- Google API & Scope Integration Tools ------------------------
+const gmailToolDeclaration = {
+  name: 'search_gmail_emails',
+  description: 'Search or view user emails from Gmail. Returns list of messages including sender, subject, date, and snippet.',
+  parameters: {
+    type: 'OBJECT',
+    properties: {
+      query: {
+        type: 'STRING',
+        description: 'Gmail search query syntax (e.g. "from:boss", "subject:urgent", "is:starred", "after:2026/01/01") or search terms.'
+      },
+      maxResults: {
+        type: 'INTEGER',
+        description: 'Maximum number of emails to retrieve (default: 5, max: 10).'
+      }
+    },
+    required: []
+  }
+};
+
+const getEmailDetailDeclaration = {
+  name: 'get_gmail_email_details',
+  description: 'Retrieve the detailed content/body of a specific email by its unique message ID.',
+  parameters: {
+    type: 'OBJECT',
+    properties: {
+      messageId: {
+        type: 'STRING',
+        description: 'The unique message ID of the email to retrieve.'
+      }
+    },
+    required: ['messageId']
+  }
+};
+
+const calendarListDeclaration = {
+  name: 'list_calendar_events',
+  description: 'Retrieve upcoming calendar events from Google Calendar. Returns event summaries, descriptions, start/end times.',
+  parameters: {
+    type: 'OBJECT',
+    properties: {
+      timeMin: {
+        type: 'STRING',
+        description: 'Lower bound (inclusive) for an event\'s end time in ISO 8601 format (e.g., 2026-07-21T00:00:00Z). Defaults to current time.'
+      },
+      maxResults: {
+        type: 'INTEGER',
+        description: 'Maximum number of events to return (default: 5, max: 15).'
+      }
+    },
+    required: []
+  }
+};
+
+const calendarCreateDeclaration = {
+  name: 'create_calendar_event',
+  description: 'Create a new event in the user\'s Google Calendar.',
+  parameters: {
+    type: 'OBJECT',
+    properties: {
+      summary: {
+        type: 'STRING',
+        description: 'The title/summary of the calendar event.'
+      },
+      description: {
+        type: 'STRING',
+        description: 'A detailed description of the event.'
+      },
+      startTime: {
+        type: 'STRING',
+        description: 'Start time in ISO format (e.g. 2026-07-21T18:00:00+05:30).'
+      },
+      endTime: {
+        type: 'STRING',
+        description: 'End time in ISO format (e.g. 2026-07-21T19:00:00+05:30).'
+      }
+    },
+    required: ['summary', 'startTime', 'endTime']
+  }
+};
+
+const tasksListDeclaration = {
+  name: 'list_google_tasks',
+  description: 'List current tasks in the user\'s Google Tasks lists.',
+  parameters: {
+    type: 'OBJECT',
+    properties: {
+      maxResults: {
+        type: 'INTEGER',
+        description: 'Maximum number of tasks to retrieve.'
+      }
+    },
+    required: []
+  }
+};
+
+const tasksCreateDeclaration = {
+  name: 'create_google_task',
+  description: 'Create a new task in Google Tasks.',
+  parameters: {
+    type: 'OBJECT',
+    properties: {
+      title: {
+        type: 'STRING',
+        description: 'The title/name of the task.'
+      },
+      notes: {
+        type: 'STRING',
+        description: 'Details or description of the task.'
+      }
+    },
+    required: ['title']
+  }
+};
+
+// ---- Google API Helpers ------------------------
+const refreshGoogleToken = async (user) => {
+  console.log('[Google Auth] Access token expired, attempting refresh...');
+  const refreshRes = await axios.post('https://oauth2.googleapis.com/token', {
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    refresh_token: user.googleRefreshToken,
+    grant_type: 'refresh_token',
+  });
+  const newToken = refreshRes.data.access_token;
+
+  // Update user inside DB
+  const dbUser = await User.findById(user._id);
+  if (dbUser) {
+    dbUser.googleToken = newToken;
+    if (dbUser.tokens) dbUser.tokens.gmail = newToken;
+    await dbUser.save({ validateBeforeSave: false });
+  }
+
+  user.googleToken = newToken;
+};
+
+const makeGoogleRequestWithRetry = async (user, url, params = {}) => {
+  try {
+    const headers = { Authorization: `Bearer ${user.googleToken}` };
+    const res = await axios.get(url, { headers, params });
+    return res.data;
+  } catch (err) {
+    if (err.response?.status === 401 && user.googleRefreshToken) {
+      try {
+        await refreshGoogleToken(user);
+        const headers = { Authorization: `Bearer ${user.googleToken}` };
+        const res = await axios.get(url, { headers, params });
+        return res.data;
+      } catch (refreshErr) {
+        console.error('[Google Auth] Token refresh unsuccessful:', refreshErr.message);
+        throw new Error('Google connection expired. Please login again.');
+      }
+    } else {
+      throw err;
+    }
+  }
+};
+
+const getGmailEmailsHelper = async (user, query = '', maxResults = 5) => {
+  const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
+  const listData = await makeGoogleRequestWithRetry(user, `${GMAIL_API}/messages`, { q: query, maxResults });
+  const messages = listData.messages || [];
+  if (messages.length === 0) return [];
+
+  const details = await Promise.all(
+    messages.slice(0, maxResults).map(async ({ id }) => {
+      try {
+        const msgDetail = await makeGoogleRequestWithRetry(user, `${GMAIL_API}/messages/${id}`, {
+          format: 'metadata',
+          metadataHeaders: ['From', 'Subject', 'Date']
+        });
+        const headers = msgDetail.payload?.headers || [];
+        const getHeader = (name) => headers.find(h => h.name === name)?.value || '';
+        return {
+          id,
+          from: getHeader('From'),
+          subject: getHeader('Subject'),
+          date: getHeader('Date'),
+          snippet: msgDetail.snippet || '',
+        };
+      } catch (e) {
+        return null;
+      }
+    })
+  );
+  return details.filter(Boolean);
+};
+
+const getGmailEmailDetailHelper = async (user, messageId) => {
+  const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
+  const msgDetail = await makeGoogleRequestWithRetry(user, `${GMAIL_API}/messages/${messageId}`, {
+    format: 'full'
+  });
+
+  let body = '';
+  const payload = msgDetail.payload;
+
+  if (payload) {
+    if (payload.body && payload.body.data) {
+      body = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+    } else if (payload.parts) {
+      const txtPart = payload.parts.find(p => p.mimeType === 'text/plain');
+      if (txtPart && txtPart.body && txtPart.body.data) {
+        body = Buffer.from(txtPart.body.data, 'base64').toString('utf-8');
+      } else {
+        const firstPart = payload.parts[0];
+        if (firstPart && firstPart.body && firstPart.body.data) {
+          body = Buffer.from(firstPart.body.data, 'base64').toString('utf-8');
+        }
+      }
+    }
+  }
+
+  const headers = msgDetail.payload?.headers || [];
+  const getHeader = (name) => headers.find(h => h.name === name)?.value || '';
+
+  return {
+    id: messageId,
+    from: getHeader('From'),
+    subject: getHeader('Subject'),
+    date: getHeader('Date'),
+    body: body.substring(0, 5000),
+    snippet: msgDetail.snippet || ''
+  };
+};
+
+const listCalendarEventsHelper = async (user, timeMin = '', maxResults = 5) => {
+  const minTime = timeMin || new Date().toISOString();
+  const url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+  const data = await makeGoogleRequestWithRetry(user, url, {
+    timeMin: minTime,
+    maxResults,
+    singleEvents: true,
+    orderBy: 'startTime'
+  });
+  return (data.items || []).map(event => ({
+    id: event.id,
+    summary: event.summary,
+    description: event.description || '',
+    start: event.start?.dateTime || event.start?.date,
+    end: event.end?.dateTime || event.end?.date,
+    htmlLink: event.htmlLink
+  }));
+};
+
+const createCalendarEventHelper = async (user, summary, description = '', startTime, endTime) => {
+  const url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+  const headers = { Authorization: `Bearer ${user.googleToken}` };
+
+  const body = {
+    summary,
+    description,
+    start: { dateTime: startTime },
+    end: { dateTime: endTime }
+  };
+
+  try {
+    const res = await axios.post(url, body, { headers });
+    return res.data;
+  } catch (err) {
+    if (err.response?.status === 401 && user.googleRefreshToken) {
+      await refreshGoogleToken(user);
+      const headers = { Authorization: `Bearer ${user.googleToken}` };
+      const res = await axios.post(url, body, { headers });
+      return res.data;
+    } else {
+      throw err;
+    }
+  }
+};
+
+const listGoogleTasksHelper = async (user, maxResults = 10) => {
+  const url = 'https://tasks.googleapis.com/v1/lists/@default/tasks';
+  const data = await makeGoogleRequestWithRetry(user, url, { maxResults });
+  return (data.items || []).map(task => ({
+    id: task.id,
+    title: task.title,
+    notes: task.notes || '',
+    status: task.status,
+    due: task.due
+  }));
+};
+
+const createGoogleTaskHelper = async (user, title, notes = '') => {
+  const url = 'https://tasks.googleapis.com/v1/lists/@default/tasks';
+  const headers = { Authorization: `Bearer ${user.googleToken}` };
+  const body = { title, notes };
+
+  try {
+    const res = await axios.post(url, body, { headers });
+    return res.data;
+  } catch (err) {
+    if (err.response?.status === 401 && user.googleRefreshToken) {
+      await refreshGoogleToken(user);
+      const headers = { Authorization: `Bearer ${user.googleToken}` };
+      const res = await axios.post(url, body, { headers });
+      return res.data;
+    } else {
+      throw err;
+    }
+  }
+};
 
 async function getMCPClient() {
   console.log('[MCP] Local Stdio MCP is disabled in Cloudflare Workers serverless environment.');
@@ -410,6 +709,17 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
   await getMCPClient();
   const geminiTools = mcpTools.map(mapMCPToolToGemini);
 
+  if (user?.googleToken) {
+    geminiTools.push(
+      gmailToolDeclaration,
+      getEmailDetailDeclaration,
+      calendarListDeclaration,
+      calendarCreateDeclaration,
+      tasksListDeclaration,
+      tasksCreateDeclaration
+    );
+  }
+
   let lastError;
 
   for (const modelName of models) {
@@ -467,21 +777,80 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
             console.log(`[Gemini] 🛠️ Calling MCP Tool: ${call.name} with args:`, call.args);
 
             try {
-              if (!mcpClientInstance) throw new Error("MCP Client not connected");
-
-              const mcpResponse = await mcpClientInstance.callTool({
-                name: call.name,
-                arguments: call.args
-              });
-
               let responseObj;
-              if (mcpResponse.isError) {
-                responseObj = { error: mcpResponse.content[0].text };
-              } else {
-                try {
-                  responseObj = JSON.parse(mcpResponse.content[0].text);
-                } catch (e) {
-                  responseObj = { result: mcpResponse.content[0].text };
+
+              if (call.name === 'search_gmail_emails') {
+                if (!user.googleToken) {
+                  responseObj = { error: 'Gmail is not connected. Please connect Gmail in the sidebar.' };
+                } else {
+                  const query = call.args.query || '';
+                  const max = Math.min(call.args.maxResults || 5, 10);
+                  const emails = await getGmailEmailsHelper(user, query, max);
+                  responseObj = { emails };
+                }
+              }
+              else if (call.name === 'get_gmail_email_details') {
+                if (!user.googleToken) {
+                  responseObj = { error: 'Gmail is not connected. Please connect Gmail in the sidebar.' };
+                } else {
+                  const details = await getGmailEmailDetailHelper(user, call.args.messageId);
+                  responseObj = { details };
+                }
+              }
+              else if (call.name === 'list_calendar_events') {
+                if (!user.googleToken) {
+                  responseObj = { error: 'Google Calendar is not connected. Please connect Google in the sidebar.' };
+                } else {
+                  const timeMin = call.args.timeMin || '';
+                  const max = Math.min(call.args.maxResults || 5, 15);
+                  const events = await listCalendarEventsHelper(user, timeMin, max);
+                  responseObj = { events };
+                }
+              }
+              else if (call.name === 'create_calendar_event') {
+                if (!user.googleToken) {
+                  responseObj = { error: 'Google Calendar is not connected. Please connect Google in the sidebar.' };
+                } else {
+                  const { summary, description, startTime, endTime } = call.args;
+                  const event = await createCalendarEventHelper(user, summary, description, startTime, endTime);
+                  responseObj = { event };
+                }
+              }
+              else if (call.name === 'list_google_tasks') {
+                if (!user.googleToken) {
+                  responseObj = { error: 'Google Tasks is not connected. Please connect Google in the sidebar.' };
+                } else {
+                  const max = Math.min(call.args.maxResults || 10, 20);
+                  const tasks = await listGoogleTasksHelper(user, max);
+                  responseObj = { tasks };
+                }
+              }
+              else if (call.name === 'create_google_task') {
+                if (!user.googleToken) {
+                  responseObj = { error: 'Google Tasks is not connected. Please connect Google in the sidebar.' };
+                } else {
+                  const { title, notes } = call.args;
+                  const task = await createGoogleTaskHelper(user, title, notes);
+                  responseObj = { task };
+                }
+              }
+              else {
+                // fall back to stdio MCP client
+                if (!mcpClientInstance) throw new Error("MCP Client not connected");
+
+                const mcpResponse = await mcpClientInstance.callTool({
+                  name: call.name,
+                  arguments: call.args
+                });
+
+                if (mcpResponse.isError) {
+                  responseObj = { error: mcpResponse.content[0].text };
+                } else {
+                  try {
+                    responseObj = JSON.parse(mcpResponse.content[0].text);
+                  } catch (e) {
+                    responseObj = { result: mcpResponse.content[0].text };
+                  }
                 }
               }
 
@@ -492,7 +861,7 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
                 }
               });
             } catch (err) {
-              console.error(`[Gemini] Tool error:`, err.message);
+              console.error(`[Gemini] Tool error for ${call.name}:`, err.message);
               functionResponses.push({
                 functionResponse: {
                   name: call.name,
