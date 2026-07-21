@@ -40,18 +40,18 @@ const TaskCard = ({ task, onComplete, onDelete }) => {
               className="tc-badge"
               style={{ background: p.badge, color: p.text, border: `1px solid ${p.text}30` }}
             >
-              {PRIORITY_LABEL[task.priority]}
+              {PRIORITY_LABEL[task.priority || 'medium']}
             </span>
             {/* Status badge */}
             <span
               className="tc-badge"
               style={{
-                background: `${STATUS_COLOR[task.status]}18`,
-                color: STATUS_COLOR[task.status],
-                border: `1px solid ${STATUS_COLOR[task.status]}30`,
+                background: `${STATUS_COLOR[task.status || 'pending']}18`,
+                color: STATUS_COLOR[task.status || 'pending'],
+                border: `1px solid ${STATUS_COLOR[task.status || 'pending']}30`,
               }}
             >
-              {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+              {(task.status || 'pending').charAt(0).toUpperCase() + (task.status || 'pending').slice(1)}
             </span>
             {isOverdue && (
               <span className="tc-badge tc-overdue" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>

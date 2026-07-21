@@ -94,15 +94,48 @@ const castToObjectId = (value) => {
     return value;
 };
 
+const castIds = (obj) => {
+    if (!obj || typeof obj !== 'object') return obj;
+    if (obj instanceof ObjectId || obj instanceof Date) return obj;
+
+    if (Array.isArray(obj)) {
+        return obj.map(castIds);
+    }
+
+    const res = {};
+    for (const [k, v] of Object.entries(obj)) {
+        const lowerK = k.toLowerCase();
+        if (v && typeof v === 'object' && !(v instanceof Date) && !(v instanceof ObjectId)) {
+            res[k] = castIds(v);
+        } else if (lowerK === '_id' || lowerK.endsWith('id') || lowerK === 'id' || lowerK.includes('id.')) {
+            if (Array.isArray(v)) {
+                res[k] = v.map(castToObjectId);
+            } else {
+                res[k] = castToObjectId(v);
+            }
+        } else {
+            res[k] = v;
+        }
+    }
+    return res;
+};
+
 const sanitizeQueryObj = (query) => {
     if (!query || typeof query !== 'object') return query;
     if (query instanceof ObjectId || query instanceof Date) return query;
 
     const newQuery = Array.isArray(query) ? [] : {};
     for (const [key, val] of Object.entries(query)) {
+        const lowerKey = key.toLowerCase();
         if (val && typeof val === 'object' && !(val instanceof Date) && !(val instanceof ObjectId)) {
             newQuery[key] = sanitizeQueryObj(val);
-        } else if (['_id', 'userId', 'taskId', 'metadata.fileId'].includes(key) || (key === '$in' && Array.isArray(val))) {
+        } else if (
+            ['_id', 'userId', 'taskId', 'metadata.fileId', 'metadata.sourceId'].includes(key) ||
+            lowerKey.endsWith('id') ||
+            lowerKey === 'id' ||
+            lowerKey.includes('id.') ||
+            (key === '$in' && Array.isArray(val))
+        ) {
             if (Array.isArray(val)) {
                 newQuery[key] = val.map(castToObjectId);
             } else {
@@ -118,7 +151,21 @@ const sanitizeQueryObj = (query) => {
 class MongoDocument {
     constructor(raw, model, isFromDb = false) {
         Object.assign(this, raw);
-        Object.defineProperty(this, '_raw', { value: isFromDb ? { ...raw } : {}, writable: true, enumerable: false });
+
+        // Apply schema default values for new documents
+        if (!isFromDb && model && model.schema && model.schema.fields) {
+            for (const [fieldName, fieldDef] of Object.entries(model.schema.fields)) {
+                if (this[fieldName] === undefined && fieldDef && typeof fieldDef === 'object') {
+                    if (typeof fieldDef.default === 'function') {
+                        this[fieldName] = fieldDef.default();
+                    } else if (fieldDef.default !== undefined) {
+                        this[fieldName] = fieldDef.default;
+                    }
+                }
+            }
+        }
+
+        Object.defineProperty(this, '_raw', { value: isFromDb ? { ...this } : {}, writable: true, enumerable: false });
         Object.defineProperty(this, '_isNew', { value: !isFromDb, writable: true, enumerable: false });
         Object.defineProperty(this, '_model', { value: model, writable: true, enumerable: false });
 
@@ -192,12 +239,13 @@ class MongoDocument {
         }
 
         // Build dataToSave removing dynamic bound schema functions
-        const dataToSave = {};
+        let dataToSave = {};
         for (const [k, v] of Object.entries(this)) {
             if (typeof v !== 'function') {
                 dataToSave[k] = v;
             }
         }
+        dataToSave = castIds(dataToSave);
 
         if (this._model.schema.options.timestamps) {
             const now = new Date();
@@ -445,13 +493,15 @@ class ModelCompat {
     async updateOne(query, update, options = {}) {
         const col = await this.getCollection();
         const sanitizedQuery = sanitizeQueryObj(query);
-        return col.updateOne(sanitizedQuery, update, options);
+        const sanitizedUpdate = castIds(update);
+        return col.updateOne(sanitizedQuery, sanitizedUpdate, options);
     }
 
     async updateMany(query, update, options = {}) {
         const col = await this.getCollection();
         const sanitizedQuery = sanitizeQueryObj(query);
-        return col.updateMany(sanitizedQuery, update, options);
+        const sanitizedUpdate = castIds(update);
+        return col.updateMany(sanitizedQuery, sanitizedUpdate, options);
     }
 
     async findByIdAndUpdate(id, update, options = {}) {
@@ -468,8 +518,9 @@ class ModelCompat {
         if (!hasModifiers) {
             mongoUpdate = { $set: update };
         }
+        const sanitizedUpdate = castIds(mongoUpdate);
 
-        const res = await col.findOneAndUpdate(sanitizedQuery, mongoUpdate, {
+        const res = await col.findOneAndUpdate(sanitizedQuery, sanitizedUpdate, {
             returnDocument,
             upsert: options.upsert || false,
         });
