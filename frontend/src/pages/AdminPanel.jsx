@@ -203,6 +203,7 @@ function AITab({ toast }) {
   const [ai, setAi] = useState({ provider: 'gemini', model: '', allProviders: [] });
   const [selectedProvId, setSelectedProvId] = useState('gemini');
   const [apiKeyInput, setApiKeyInput] = useState('');
+  const [iconInput, setIconInput] = useState('');
   const [busy, setBusy] = useState(false);
 
   const loadAi = () => {
@@ -222,7 +223,29 @@ function AITab({ toast }) {
   const isKeyLinked = ai.apiKeys && !!ai.apiKeys[selectedProvId];
   const maskedKey = ai.apiKeys ? ai.apiKeys[selectedProvId] : '';
 
-  const getProviderIcon = (id, size = 16) => {
+  useEffect(() => {
+    if (selectedProvider) {
+      setIconInput(selectedProvider.icon || '');
+    }
+  }, [selectedProvId, ai.allProviders]);
+
+  const getProviderIcon = (idOrProv, size = 16) => {
+    const prov = typeof idOrProv === 'string'
+      ? (ai.allProviders || []).find(p => p.id === idOrProv)
+      : idOrProv;
+
+    if (prov && prov.icon) {
+      const t = String(prov.icon).trim();
+      if (t.startsWith('<svg')) {
+        return <span className="mcp-svg-wrapper" style={{ width: size, height: size, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} dangerouslySetInnerHTML={{ __html: t }} />;
+      }
+      if (t.startsWith('data:') || t.startsWith('http') || t.startsWith('/')) {
+        return <img src={t} alt="" style={{ width: size, height: size, objectFit: 'contain' }} />;
+      }
+      return <span style={{ fontSize: `${size}px`, lineHeight: 1 }}>{t}</span>;
+    }
+
+    const id = prov?.id || idOrProv;
     switch (id) {
       case 'gemini': return <Sparkles size={size} />;
       case 'openai': return <Brain size={size} />;
@@ -286,6 +309,32 @@ function AITab({ toast }) {
       }
     } catch (err) {
       toast('Network error removing API key', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSaveIcon = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${API}/ai`, {
+        method: 'PUT',
+        headers: authHdr(),
+        body: JSON.stringify({
+          icons: {
+            [selectedProvId]: iconInput.trim()
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAi(data.data);
+        toast(`Icon for ${selectedProvider?.name || selectedProvId} updated successfully!`, 'success');
+      } else {
+        toast(data.message || 'Failed to update icon', 'error');
+      }
+    } catch (err) {
+      toast('Network error updating icon', 'error');
     } finally {
       setBusy(false);
     }
@@ -499,6 +548,30 @@ function AITab({ toast }) {
                 No API Key currently configured. Link a key below to enable this provider.
               </div>
             )}
+          </div>
+
+          <div className="adm-field" style={{ marginBottom: 20 }}>
+            <label className="adm-label" htmlFor="prov-icon-input">
+              Provider Icon (Emoji, SVG markup, or Image URL)
+            </label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input
+                id="prov-icon-input"
+                className="adm-input"
+                value={iconInput}
+                onChange={e => setIconInput(e.target.value)}
+                placeholder="✨ or <svg>..."
+                disabled={busy}
+                style={{ flex: 1 }}
+              />
+              <button
+                className="adm-btn adm-btn-secondary"
+                onClick={handleSaveIcon}
+                disabled={busy}
+              >
+                Save Icon
+              </button>
+            </div>
           </div>
 
           <div className="adm-field" style={{ marginBottom: 20 }}>

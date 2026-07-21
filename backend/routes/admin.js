@@ -63,6 +63,7 @@ const DEFAULT_CONFIG = {
     model: 'gemini-2.5-flash',
     // apiKeys: { providerId: 'actual-key' } — only providers with a key here are active
     apiKeys: {},
+    icons: {},
   },
   rag: { enabled: false, source: '', chunkSize: 1000, overlap: 200 },
   profile: { adminName: 'Admin', adminEmail: '', appName: 'TOM.AI' },
@@ -80,6 +81,7 @@ const readConfig = async () => {
     if (doc) {
       let aiMerged = { ...DEFAULT_CONFIG.ai, ...doc.ai };
       if (!aiMerged.apiKeys) aiMerged.apiKeys = {};
+      if (!aiMerged.icons) aiMerged.icons = {};
       if (doc.ai && doc.ai.apiKey && !aiMerged.apiKeys[aiMerged.provider]) {
         aiMerged.apiKeys[aiMerged.provider] = doc.ai.apiKey;
       }
@@ -195,7 +197,13 @@ router.get('/ai-models-public', async (_req, res) => {
   // Only return providers that have an API key set
   const available = ALL_PROVIDERS
     .filter(p => !!keys[p.id])
-    .map(p => ({ id: p.id, name: p.name, icon: p.icon, color: p.color, models: p.models }));
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      icon: (cfg.ai.icons && cfg.ai.icons[p.id]) || p.icon,
+      color: p.color,
+      models: p.models
+    }));
   res.json({ success: true, data: available, activeProvider: cfg.ai.provider, activeModel: cfg.ai.model });
 });
 
@@ -257,22 +265,40 @@ router.delete('/mcps/:id', async (req, res) => {
 /* ── AI ───────────────────────────── */
 router.get('/ai', async (_req, res) => {
   const cfg = await readConfig();
+
+  // Merge custom icons to ALL_PROVIDERS
+  const mergedProviders = ALL_PROVIDERS.map(p => ({
+    ...p,
+    icon: (cfg.ai.icons && cfg.ai.icons[p.id]) || p.icon
+  }));
+
   // Mask all stored keys before sending to client
   const maskedKeys = {};
   Object.entries(cfg.ai.apiKeys || {}).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
-  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: ALL_PROVIDERS } });
+  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: mergedProviders } });
 });
 
-// PUT /api/admin/ai — update active provider/model
+// PUT /api/admin/ai — update active provider/model/icons
 router.put('/ai', async (req, res) => {
   const cfg = await readConfig();
-  const { provider, model } = req.body || {};
+  const { provider, model, icons } = req.body || {};
   if (provider) cfg.ai.provider = provider;
   if (model) cfg.ai.model = model;
+  if (icons) {
+    if (!cfg.ai.icons) cfg.ai.icons = {};
+    cfg.ai.icons = { ...cfg.ai.icons, ...icons };
+  }
   await writeConfig(cfg);
+
+  // Merge custom icons to ALL_PROVIDERS
+  const mergedProviders = ALL_PROVIDERS.map(p => ({
+    ...p,
+    icon: (cfg.ai.icons && cfg.ai.icons[p.id]) || p.icon
+  }));
+
   const maskedKeys = {};
   Object.entries(cfg.ai.apiKeys || {}).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
-  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: ALL_PROVIDERS } });
+  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: mergedProviders } });
 });
 
 // POST /api/admin/ai/keys — add or update a provider API key
@@ -290,9 +316,16 @@ router.post('/ai/keys', async (req, res) => {
   if (!cfg.ai.model && provider.models.length) cfg.ai.model = provider.models[0].id;
   await writeConfig(cfg);
   applyApiKeysToEnv(cfg.ai);
+
+  // Merge custom icons to ALL_PROVIDERS
+  const mergedProviders = ALL_PROVIDERS.map(p => ({
+    ...p,
+    icon: (cfg.ai.icons && cfg.ai.icons[p.id]) || p.icon
+  }));
+
   const maskedKeys = {};
   Object.entries(cfg.ai.apiKeys).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
-  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: ALL_PROVIDERS } });
+  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: mergedProviders } });
 });
 
 // DELETE /api/admin/ai/keys/:providerId — remove a provider API key
@@ -308,9 +341,16 @@ router.delete('/ai/keys/:providerId', async (req, res) => {
     cfg.ai.model = fallbackProvider?.models[0]?.id || 'gemini-2.5-flash';
   }
   await writeConfig(cfg);
+
+  // Merge custom icons to ALL_PROVIDERS
+  const mergedProviders = ALL_PROVIDERS.map(p => ({
+    ...p,
+    icon: (cfg.ai.icons && cfg.ai.icons[p.id]) || p.icon
+  }));
+
   const maskedKeys = {};
   Object.entries(cfg.ai.apiKeys || {}).forEach(([k, v]) => { maskedKeys[k] = mask(v); });
-  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: ALL_PROVIDERS } });
+  res.json({ success: true, data: { ...cfg.ai, apiKeys: maskedKeys, allProviders: mergedProviders } });
 });
 
 /* ── RAG ──────────────────────────── */
