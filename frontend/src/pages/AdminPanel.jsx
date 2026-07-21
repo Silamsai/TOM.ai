@@ -199,16 +199,28 @@ function MCPsTab({ toast }) {
 }
 
 /* ══ AI Tab (Read-Only Status View) ═════════════════════════════════ */
-function AITab() {
+function AITab({ toast }) {
   const [ai, setAi] = useState({ provider: 'gemini', model: '', allProviders: [] });
+  const [selectedProvId, setSelectedProvId] = useState('gemini');
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  const loadAi = () => {
     fetch(`${API}/ai`, { headers: authHdr() })
       .then(r => r.json())
       .then(d => { if (d.success) setAi(d.data); });
+  };
+
+  useEffect(() => {
+    loadAi();
   }, []);
 
   const activeProvider = (ai.allProviders || []).find(p => p.id === ai.provider);
+  const selectedProvider = (ai.allProviders || []).find(p => p.id === selectedProvId) || (ai.allProviders || []).find(p => p.id === 'gemini');
+
+  // get configured key for current selected provider
+  const isKeyLinked = ai.apiKeys && !!ai.apiKeys[selectedProvId];
+  const maskedKey = ai.apiKeys ? ai.apiKeys[selectedProvId] : '';
 
   const getProviderIcon = (id, size = 16) => {
     switch (id) {
@@ -225,11 +237,115 @@ function AITab() {
     anthropic: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
   };
 
+  const handleLinkKey = async () => {
+    if (!apiKeyInput.trim()) {
+      toast('Please enter a valid API key', 'error');
+      return;
+    }
+    setBusy(true);
+    try {
+      const defaultModel = selectedProvider?.models?.[0]?.id || '';
+      const res = await fetch(`${API}/ai/keys`, {
+        method: 'POST',
+        headers: authHdr(),
+        body: JSON.stringify({
+          providerId: selectedProvId,
+          apiKey: apiKeyInput.trim(),
+          model: ai.provider === selectedProvId ? ai.model : defaultModel
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAi(data.data);
+        setApiKeyInput('');
+        toast(`${selectedProvider?.name || selectedProvId} API key linked successfully!`, 'success');
+      } else {
+        toast(data.message || 'Failed to link API key', 'error');
+      }
+    } catch (err) {
+      toast('Network error linking API key', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRemoveKey = async () => {
+    if (!window.confirm(`Are you sure you want to remove the API key for ${selectedProvider?.name || selectedProvId}?`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`${API}/ai/keys/${selectedProvId}`, {
+        method: 'DELETE',
+        headers: authHdr()
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAi(data.data);
+        toast(`API key for ${selectedProvider?.name || selectedProvId} removed`, 'success');
+      } else {
+        toast(data.message || 'Failed to remove API key', 'error');
+      }
+    } catch (err) {
+      toast('Network error removing API key', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleActivateProvider = async () => {
+    if (!isKeyLinked) {
+      toast(`You must link an API key for ${selectedProvider?.name} first.`, 'error');
+      return;
+    }
+    setBusy(true);
+    try {
+      const defaultModel = selectedProvider?.models?.[0]?.id || '';
+      const res = await fetch(`${API}/ai`, {
+        method: 'PUT',
+        headers: authHdr(),
+        body: JSON.stringify({ provider: selectedProvId, model: defaultModel })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAi(data.data);
+        toast(`Active AI provider changed to ${selectedProvider?.name}`, 'success');
+      } else {
+        toast(data.message || 'Failed to set active provider', 'error');
+      }
+    } catch (err) {
+      toast('Network error setting active provider', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleActiveModelChange = async (e) => {
+    const newModel = e.target.value;
+    setBusy(true);
+    try {
+      const res = await fetch(`${API}/ai`, {
+        method: 'PUT',
+        headers: authHdr(),
+        body: JSON.stringify({ provider: ai.provider, model: newModel })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAi(data.data);
+        toast(`Active model set to ${newModel}`, 'success');
+      } else {
+        toast(data.message || 'Failed to update active model', 'error');
+      }
+    } catch (err) {
+      toast('Network error changing model', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <div className="adm-section-title">AI Status</div>
-        <div className="adm-section-sub">Current AI provider and model powering TOM.AI</div>
+        <div className="adm-section-title">AI Provider & API Settings</div>
+        <div className="adm-section-sub">Configure API keys, select active providers, and switch language models.</div>
       </div>
 
       {/* Active Provider Hero Card */}
@@ -254,67 +370,189 @@ function AITab() {
         <div style={{ fontSize: 14, opacity: 0.85, fontWeight: 500 }}>
           Model: <strong>{ai.model || 'gemini-2.5-flash'}</strong>
         </div>
+
+        {/* Model Selection Dropdown for Active Provider */}
+        {activeProvider && (
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, opacity: 0.9 }}>Change Model:</span>
+            <select
+              value={ai.model}
+              onChange={handleActiveModelChange}
+              disabled={busy}
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                border: '1px solid rgba(255,255,255,0.25)',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 500,
+                padding: '4px 10px',
+                borderRadius: 6,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              {(activeProvider.models || []).map(m => (
+                <option key={m.id} value={m.id} style={{ background: '#1a1a28', color: '#fff' }}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           marginTop: 14, background: 'rgba(255,255,255,0.2)',
           borderRadius: 20, padding: '4px 14px', fontSize: 12, fontWeight: 600,
         }}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />
-          ACTIVE & RUNNING
+          ACTIVE & POWERING CHAT
         </div>
       </div>
 
-      {/* Info Note */}
-      <div className="adm-card" style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '18px 20px' }}>
-        <div style={{ color: 'var(--adm-dim)', display: 'inline-flex', alignItems: 'center', marginTop: 3 }}>
-          <Info size={24} />
-        </div>
-        <div>
-          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>API Key Management</div>
-          <div style={{ fontSize: 13, color: 'var(--adm-dim)', lineHeight: 1.6 }}>
-            API keys are configured securely via environment variables on the server.
-            To update the Gemini API key, go to your <strong>Render Dashboard → Environment Variables</strong> and set <code style={{ background: 'var(--adm-border)', padding: '1px 6px', borderRadius: 4 }}>GEMINI_API_KEY</code> to a valid key starting with <code style={{ background: 'var(--adm-border)', padding: '1px 6px', borderRadius: 4 }}>AIza...</code>
-          </div>
-          <a
-            href="https://aistudio.google.com/app/apikey"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="adm-btn adm-btn-secondary adm-btn-sm"
-            style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
-          >
-            <Key size={12} />
-            <span>Get API Key from Google AI Studio</span>
-          </a>
-        </div>
+      {/* Select Provider Grid */}
+      <div style={{ marginTop: 24, marginBottom: 12, fontWeight: 600, fontSize: 14 }}>
+        Configure Available Providers
       </div>
-
-      {/* Available Providers */}
-      <div style={{ marginTop: 24, marginBottom: 10, fontWeight: 600, fontSize: 13 }}>Available Providers</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12, marginBottom: 20 }}>
         {(ai.allProviders || [
           { id: 'gemini', name: 'Google Gemini', models: [{ name: 'gemini-2.5-flash' }, { name: 'gemini-1.5-pro' }] },
           { id: 'openai', name: 'OpenAI', models: [{ name: 'gpt-4o' }, { name: 'gpt-4o-mini' }] },
           { id: 'anthropic', name: 'Anthropic', models: [{ name: 'claude-3.5-sonnet' }] },
-        ]).map(p => (
-          <div key={p.id} className="adm-card" style={{
-            padding: '14px 16px',
-            border: p.id === ai.provider ? '2px solid #4285f4' : '2px solid transparent',
-            borderRadius: 12,
-            opacity: p.id === ai.provider ? 1 : 0.6,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center' }}>{getProviderIcon(p.id, 20)}</span>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</span>
-              {p.id === ai.provider && (
-                <span className="adm-ai-active-badge" style={{ marginLeft: 'auto' }}>ACTIVE</span>
-              )}
+        ]).map(p => {
+          const hasKey = ai.apiKeys && !!ai.apiKeys[p.id];
+          const isActive = p.id === ai.provider;
+          return (
+            <div
+              key={p.id}
+              onClick={() => setSelectedProvId(p.id)}
+              className="adm-card"
+              style={{
+                padding: '16px',
+                border: selectedProvId === p.id
+                  ? '2px solid var(--adm-accent)'
+                  : (isActive ? '2px solid rgba(34, 197, 94, 0.4)' : '2px solid transparent'),
+                borderRadius: 12,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                background: selectedProvId === p.id ? 'rgba(124, 108, 252, 0.05)' : 'var(--adm-card)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', color: selectedProvId === p.id ? 'var(--adm-accent2)' : 'inherit' }}>
+                  {getProviderIcon(p.id, 18)}
+                </span>
+                <span style={{ fontWeight: 600, fontSize: 13.5 }}>{p.name}</span>
+                {isActive && (
+                  <span className="adm-ai-active-badge" style={{ marginLeft: 'auto' }}>ACTIVE</span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--adm-dim)', marginBottom: 8 }}>
+                {(p.models || []).map(m => m.shortName || m.name).slice(0, 3).join(' · ')}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontWeight: 500 }}>
+                {hasKey ? (
+                  <span style={{ color: 'var(--adm-green)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    ● Key Linked
+                  </span>
+                ) : (
+                  <span style={{ color: 'var(--adm-dim)' }}>
+                    ○ Unlinked
+                  </span>
+                )}
+              </div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--adm-dim)' }}>
-              {(p.models || []).map(m => m.shortName || m.name).slice(0, 3).join(' · ')}
+          );
+        })}
+      </div>
+
+      {/* Selected Provider Details & Key configuration */}
+      {selectedProvider && (
+        <div className="adm-card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <span style={{ display: 'inline-flex', color: 'var(--adm-accent2)' }}>
+              {getProviderIcon(selectedProvider.id, 24)}
+            </span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16 }}>Settings for {selectedProvider.name}</div>
+              <div style={{ fontSize: 12, color: 'var(--adm-dim)' }}>Configure credentials and active settings below.</div>
             </div>
           </div>
-        ))}
-      </div>
+
+          <div className="adm-field" style={{ marginBottom: 20 }}>
+            <label className="adm-label">API Key Status</label>
+            {isKeyLinked ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--adm-border)', borderRadius: 8, padding: '10px 14px' }}>
+                <span style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--adm-dim)' }}>
+                  {maskedKey}
+                </span>
+                <button
+                  className="adm-btn adm-btn-danger adm-btn-sm"
+                  onClick={handleRemoveKey}
+                  disabled={busy}
+                >
+                  Remove Key
+                </button>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: 'var(--adm-dim)', fontStyle: 'italic', padding: '6px 0' }}>
+                No API Key currently configured. Link a key below to enable this provider.
+              </div>
+            )}
+          </div>
+
+          <div className="adm-field" style={{ marginBottom: 20 }}>
+            <label className="adm-label" htmlFor="api-key-input">
+              {isKeyLinked ? 'Update / Change API Key' : 'Link API Key'}
+            </label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input
+                id="api-key-input"
+                className="adm-input"
+                type="password"
+                value={apiKeyInput}
+                onChange={e => setApiKeyInput(e.target.value)}
+                placeholder={selectedProvider.id === 'gemini' ? 'Enter Gemini API key (starts with AIza...)' : 'Enter API Key...'}
+                disabled={busy}
+                style={{ flex: 1 }}
+              />
+              <button
+                className="adm-btn adm-btn-primary"
+                onClick={handleLinkKey}
+                disabled={busy || !apiKeyInput.trim()}
+              >
+                {busy ? 'Saving...' : 'Link Key'}
+              </button>
+            </div>
+            {selectedProvider.id === 'gemini' && (
+              <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--adm-dim)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Info size={12} />
+                <span>
+                  Get a free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--adm-accent2)', textDecoration: 'underline' }}>Google AI Studio</a>.
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 10, borderTop: '1px solid var(--adm-border)', paddingTop: 20 }}>
+            {selectedProvId !== ai.provider ? (
+              <button
+                className="adm-btn adm-btn-primary"
+                onClick={handleActivateProvider}
+                disabled={busy || !isKeyLinked}
+              >
+                Make Active Provider
+              </button>
+            ) : (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--adm-green)' }}>
+                <CheckCircle size={16} />
+                <span>Currently Active provider powering TOM.AI chat</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -447,7 +685,7 @@ export default function AdminPanel() {
 
   if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
 
-  const tabMap = { dashboard: <DashboardTab />, mcps: <MCPsTab toast={showToast} />, ai: <AITab />, rag: <RAGTab toast={showToast} />, profile: <ProfileTab toast={showToast} /> };
+  const tabMap = { dashboard: <DashboardTab />, mcps: <MCPsTab toast={showToast} />, ai: <AITab toast={showToast} />, rag: <RAGTab toast={showToast} />, profile: <ProfileTab toast={showToast} /> };
   const cur = TABS.find(t => t.id === tab) || TABS[0];
 
   return (
