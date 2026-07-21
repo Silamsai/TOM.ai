@@ -18,6 +18,8 @@ obj/
 .env.test.local
 .env.production.local
 *.env
+.dev.vars
+*.dev.vars
 
 # Debug logs and crash reports
 npm-debug.log*
