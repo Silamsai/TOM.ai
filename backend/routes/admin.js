@@ -4,11 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const jwt = require('jsonwebtoken');
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin@tomai.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
-const ADMIN_SECRET = (process.env.JWT_SECRET || 'secret') + '-admin';
+const getAdminUsername = () => (process.env.ADMIN_USERNAME || 'admin@tomai.com').toLowerCase().trim();
+const getAdminPassword = () => process.env.ADMIN_PASSWORD || 'Admin@123';
+const getAdminSecret = () => (process.env.JWT_SECRET || 'secret') + '-admin';
 
-console.log('🔑 [TOM.AI Admin] Admin user configured:', ADMIN_USERNAME);
+console.log('🔑 [TOM.AI Admin] Admin user configured dynamics loaded');
 
 // All known providers catalogue — never changes
 const ALL_PROVIDERS = [
@@ -158,7 +158,7 @@ const mask = (str) => str ? '•'.repeat(Math.min(str.length, 24)) : '';
 const adminAuth = (req, res, next) => {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Bearer ')) return res.status(401).json({ success: false, message: 'Unauthorized' });
-  try { jwt.verify(auth.slice(7), ADMIN_SECRET); next(); }
+  try { jwt.verify(auth.slice(7), getAdminSecret()); next(); }
   catch { res.status(401).json({ success: false, message: 'Invalid or expired token' }); }
 };
 
@@ -169,14 +169,14 @@ router.post('/login', (req, res) => {
   const { username, password } = req.body || {};
   const uClean = (username || '').trim().toLowerCase();
   const pClean = (password || '').trim();
-  const expectedU = ADMIN_USERNAME.trim().toLowerCase();
-  const expectedP = ADMIN_PASSWORD.trim();
+  const expectedU = getAdminUsername();
+  const expectedP = getAdminPassword().trim();
 
   console.log('[Admin Login Debug] Cleaned Sent:', { uClean, pClean });
   console.log('[Admin Login Debug] Cleaned Expected:', { expectedU, expectedP });
 
   if (uClean === expectedU && pClean === expectedP) {
-    const token = jwt.sign({ role: 'admin', username: uClean }, ADMIN_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ role: 'admin', username: uClean }, getAdminSecret(), { expiresIn: '7d' });
     return res.json({ success: true, token });
   }
   res.status(401).json({ success: false, message: 'Invalid admin credentials' });
