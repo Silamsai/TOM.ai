@@ -2,8 +2,8 @@ const express = require('../config/expressCompat');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin@tomai.com';
-const ADMIN_SECRET = (process.env.JWT_SECRET || 'secret') + '-admin';
+const getAdminUsername = () => (process.env.ADMIN_USERNAME || 'admin@tomai.com').toLowerCase().trim();
+const getAdminSecret = () => (process.env.JWT_SECRET || 'secret') + '-admin';
 const User = require('../models/User');
 const TempOTP = require('../models/TempOTP');
 const { sendOTPEmail, sendPasswordResetEmail, sendConfirmationEmail } = require('../services/emailService');
@@ -105,11 +105,12 @@ router.post('/login', async (req, res, next) => {
     if (!password) return res.status(400).json({ success: false, message: ERRORS.PASSWORD_REQUIRED });
 
     const normalizedEmail = email.toLowerCase().trim();
+    const targetAdminUsername = getAdminUsername();
     const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
 
     // Check if logging in as admin
-    if (normalizedEmail === ADMIN_USERNAME.toLowerCase().trim() && password === ADMIN_PASSWORD) {
-      const adminToken = jwt.sign({ role: 'admin', username: normalizedEmail }, ADMIN_SECRET, { expiresIn: '7d' });
+    if (normalizedEmail === targetAdminUsername && password === ADMIN_PASSWORD) {
+      const adminToken = jwt.sign({ role: 'admin', username: normalizedEmail }, getAdminSecret(), { expiresIn: '7d' });
       return res.status(200).json({
         success: true,
         message: 'Admin login successful!',
@@ -117,7 +118,7 @@ router.post('/login', async (req, res, next) => {
           token: adminToken,
           admin: true,
           user: {
-            email: ADMIN_USERNAME,
+            email: targetAdminUsername,
             name: 'Admin User',
             role: 'admin'
           }
