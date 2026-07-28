@@ -1,4 +1,5 @@
 name = "tom-ai-backend"
+account_id = "4bb225ae1650bffb5438f789b2a9dbdf"
 main = "server.js"
 compatibility_date = "2026-07-01"
 compatibility_flags = [ "nodejs_compat" ]
