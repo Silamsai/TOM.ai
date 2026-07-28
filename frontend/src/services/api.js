@@ -1,7 +1,12 @@
 import axios from 'axios';
 import { getToken, clearAll } from '../utils/storage';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const normalizeBaseUrl = (value) => value.replace(/\/+$/, '');
+const API_BASE_URL = normalizeBaseUrl(process.env.REACT_APP_API_URL || '/api');
+const GOOGLE_CALLBACK_URL =
+  process.env.REACT_APP_GOOGLE_CONNECT_REDIRECT_URI ||
+  process.env.REACT_APP_GOOGLE_REDIRECT_URI ||
+  `${window.location.origin}/auth/google/callback`;
 
 console.log('[TOM.AI] API URL:', API_BASE_URL);
 
@@ -67,6 +72,18 @@ export const getGmailAuthUrl = () =>
 
 export const exchangeGoogleCode = (code) =>
   api.post('/auth/google/callback', { code });
+
+// ============================================================
+// GOOGLE CONNECT (Integration OAuth — separate from sign-in)
+// ============================================================
+export const getGoogleConnectUrl = () =>
+  api.get('/oauth/google/connect-url', { params: { redirectUri: GOOGLE_CALLBACK_URL } });
+
+export const connectGoogleCallback = (code) =>
+  api.post('/oauth/google/connect-callback', { code, redirectUri: GOOGLE_CALLBACK_URL });
+
+export const getUserIntegrations = () =>
+  api.get('/user/access');
 
 // ============================================================
 // CHAT
@@ -141,6 +158,10 @@ export const clearServerChatHistory = () => api.delete('/user/chat-history');
 export const revokeGmailAccess = () => api.post('/oauth/revoke/gmail');
 
 export const revokeCalendarAccess = () => api.post('/oauth/revoke/calendar');
+
+export const revokeTasksAccess = () => api.post('/oauth/revoke/tasks');
+
+export const revokeAllGoogle = () => api.post('/oauth/revoke/all-google');
 
 // ============================================================
 // RAG — Personal Knowledge Base

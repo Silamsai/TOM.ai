@@ -57,6 +57,9 @@ router.get('/access', async (req, res, next) => {
     const user = await User.findById(req.userId).select('permissions tokens googleId signupMethod');
     if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
 
+    const isServiceConnected = (service) =>
+      !!(user.permissions?.[service] && user.tokens?.[service]);
+
     res.json({
       success: true,
       data: {
@@ -64,9 +67,9 @@ router.get('/access', async (req, res, next) => {
         googleConnected: !!user.googleId,
         permissions: user.permissions || {},
         integrations: {
-          gmail: { enabled: !!user.permissions?.gmail, connected: !!user.tokens?.gmail || !!user.googleId },
-          calendar: { enabled: !!user.permissions?.calendar, connected: !!user.tokens?.calendar },
-          tasks: { enabled: !!user.permissions?.tasks, connected: !!user.tokens?.tasks },
+          gmail: { enabled: !!user.permissions?.gmail, connected: isServiceConnected('gmail') },
+          calendar: { enabled: !!user.permissions?.calendar, connected: isServiceConnected('calendar') },
+          tasks: { enabled: !!user.permissions?.tasks, connected: isServiceConnected('tasks') },
         },
       },
     });

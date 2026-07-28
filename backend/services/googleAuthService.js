@@ -14,18 +14,26 @@ const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
  *  2. The code exchange request (sent from backend to Google)
  * We use the FRONTEND callback URL since GoogleCallback.jsx handles the redirect.
  */
-const REDIRECT_URI =
-  process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/auth/google/callback';
+const DEFAULT_REDIRECT_URI = 'http://localhost:3000/auth/google/callback';
+
+const resolveGoogleRedirectUri = (overrideUri, envKeys = []) => {
+  if (overrideUri) return overrideUri;
+  for (const key of envKeys) {
+    if (process.env[key]) return process.env[key];
+  }
+  return process.env.GOOGLE_REDIRECT_URI || DEFAULT_REDIRECT_URI;
+};
 
 /**
  * Build the Google OAuth authorization URL for basic sign-in.
  * Only requests openid, profile, email — NO sensitive scopes.
  * This avoids the "Google hasn't verified this app" warning.
  */
-const getGoogleAuthUrl = () => {
+const getGoogleAuthUrl = (redirectUriOverride) => {
+  const redirectUri = resolveGoogleRedirectUri(redirectUriOverride, ['GOOGLE_SIGNIN_REDIRECT_URI']);
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'openid profile email',
     access_type: 'offline',
@@ -41,10 +49,11 @@ const getGoogleAuthUrl = () => {
  * During development this shows an "unverified app" warning —
  * click Advanced → Go to app to proceed.
  */
-const getGmailAuthUrl = () => {
+const getGmailAuthUrl = (redirectUriOverride) => {
+  const redirectUri = resolveGoogleRedirectUri(redirectUriOverride, ['GOOGLE_CONNECT_REDIRECT_URI', 'GOOGLE_SIGNIN_REDIRECT_URI']);
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: [
       'openid profile email',
@@ -64,7 +73,7 @@ const getGmailAuthUrl = () => {
  * @returns {Promise<{ access_token, refresh_token, id_token }>}
  */
 const exchangeCodeForToken = async (code, customRedirectUri) => {
-  const redirectUri = customRedirectUri || REDIRECT_URI;
+  const redirectUri = resolveGoogleRedirectUri(customRedirectUri, ['GOOGLE_SIGNIN_REDIRECT_URI']);
   const response = await axios.post(GOOGLE_TOKEN_URL, {
     code,
     client_id: process.env.GOOGLE_CLIENT_ID,
@@ -87,4 +96,10 @@ const getUserInfoFromGoogle = async (accessToken) => {
   return response.data;
 };
 
-module.exports = { getGoogleAuthUrl, getGmailAuthUrl, exchangeCodeForToken, getUserInfoFromGoogle };
+module.exports = {
+  getGoogleAuthUrl,
+  getGmailAuthUrl,
+  exchangeCodeForToken,
+  getUserInfoFromGoogle,
+  resolveGoogleRedirectUri,
+};

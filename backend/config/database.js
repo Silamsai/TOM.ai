@@ -16,23 +16,8 @@ const connectDB = async () => {
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 
-    // Seed admin@tomai.com user if it doesn't exist in standard user database
-    try {
-      const User = require('../models/User');
-      const adminExists = await User.findOne({ email: 'admin@tomai.com' });
-      if (!adminExists) {
-        await User.create({
-          email: 'admin@tomai.com',
-          password: process.env.ADMIN_PASSWORD || 'Admin@123',
-          name: 'Admin User',
-          emailVerified: true
-        });
-        console.log('🌱 Seeded admin@tomai.com into user database successfully!');
-      } else {
-        console.log('🌱 Admin user admin@tomai.com already exists in user database.');
-      }
-    } catch (seedErr) {
-      console.error('⚠️ [Seed Error] Failed to auto-seed admin user:', seedErr.message);
+    if (!process.env.ADMIN_PASSWORD) {
+      console.warn('⚠️ ADMIN_PASSWORD is not configured. Admin login is disabled until it is set.');
     }
 
     // Log when disconnected

@@ -4075,6 +4075,71 @@ body.light-mode .mcp-close:hover {
   color: #111;
 }
 
+body.light-mode .mcp-section-label {
+  color: rgba(0, 0, 0, 0.45);
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .mcp-connect-google-btn {
+  background: rgba(66, 133, 244, 0.08);
+  border-color: rgba(66, 133, 244, 0.3);
+  color: #1a73e8;
+}
+
+body.light-mode .mcp-connect-google-btn:hover:not(:disabled) {
+  background: rgba(66, 133, 244, 0.15);
+  border-color: rgba(66, 133, 244, 0.5);
+  color: #1557b0;
+}
+
+body.light-mode .mcp-connect-btn {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #4f46e5;
+}
+
+body.light-mode .mcp-connect-btn:hover:not(.connected):not(:disabled) {
+  background: rgba(99, 102, 241, 0.18);
+  color: #3730a3;
+}
+
+body.light-mode .mcp-connect-btn.connected {
+  background: rgba(22, 163, 74, 0.08);
+  border-color: rgba(22, 163, 74, 0.3);
+  color: #16a34a;
+}
+
+body.light-mode .mcp-connect-btn.connected:hover {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.3);
+  color: #dc2626;
+}
+
+body.light-mode .mcp-coming-soon-badge {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(236, 72, 153, 0.1));
+  color: #9333ea;
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+body.light-mode .mcp-auth-notice {
+  background: rgba(251, 191, 36, 0.06);
+  border-color: rgba(251, 191, 36, 0.2);
+  color: #92400e;
+}
+
+body.light-mode .mcp-loading-status {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+body.light-mode .mcp-disconnect-all {
+  border-color: rgba(220, 38, 38, 0.25);
+  color: #dc2626;
+}
+
+body.light-mode .mcp-disconnect-all:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.08);
+}
+
 /* ── Todo page ── */
 body.light-mode .todo-page {
   background: #f4f5f7;

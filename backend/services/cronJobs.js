@@ -45,19 +45,22 @@ const checkReminders = async () => {
 
 const cleanupOldTasks = async () => {
   try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const oldTasks = await Task.find({ createdAt: { $lt: sevenDaysAgo } }, '_id');
+    const oldTasks = await Task.find({
+      status: { $in: ['completed', 'cancelled'] },
+      updatedAt: { $lt: thirtyDaysAgo }
+    }, '_id');
     const oldTaskIds = oldTasks.map(t => t._id);
 
     if (oldTaskIds.length > 0) {
       await Reminder.deleteMany({ taskId: { $in: oldTaskIds } });
       const result = await Task.deleteMany({ _id: { $in: oldTaskIds } });
-      console.log(`[Cron] Cleaned up ${result.deletedCount} old tasks (older than 7 days).`);
+      console.log(`[Cron] Cleaned up ${result.deletedCount} archived tasks (completed/cancelled and untouched for 30+ days).`);
     }
   } catch (err) {
-    console.error('[Cron] Error cleaning up 7-day old tasks:', err);
+    console.error('[Cron] Error cleaning up archived tasks:', err);
   }
 };
 

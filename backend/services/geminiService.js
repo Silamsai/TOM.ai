@@ -7,11 +7,13 @@
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const ChatHistory = require('../models/ChatHistory');
+const Task = require('../models/Task');
 const { searchPersonalDocuments } = require('./ragService');
 const { buildRAGContext } = require('./ragService');
 const fs = require('node:fs');
 const axios = require('axios');
 const User = require('../models/User');
+const emailService = require('./emailService');
 
 // ---- MCP Setup ----------------------------------------------------
 const mcpServerPath = '';
@@ -134,6 +136,16 @@ const tasksCreateDeclaration = {
   }
 };
 
+const hasServiceAccess = (user, service) => {
+  if (!user) return false;
+  return !!(user.permissions?.[service] && (user.tokens?.[service] || user.googleToken));
+};
+
+const getServiceAccessToken = (user, service) => {
+  if (!user) return null;
+  return user.tokens?.[service] || user.googleToken || null;
+};
+
 // ---- Google API Helpers ------------------------
 const refreshGoogleToken = async (user) => {
   console.log('[Google Auth] Access token expired, attempting refresh...');
@@ -149,23 +161,40 @@ const refreshGoogleToken = async (user) => {
   const dbUser = await User.findById(user._id);
   if (dbUser) {
     dbUser.googleToken = newToken;
-    if (dbUser.tokens) dbUser.tokens.gmail = newToken;
+    if (dbUser.tokens) {
+      for (const service of ['gmail', 'calendar', 'tasks']) {
+        if (dbUser.permissions?.[service]) {
+          dbUser.tokens[service] = newToken;
+        }
+      }
+    }
     await dbUser.save({ validateBeforeSave: false });
   }
 
   user.googleToken = newToken;
+  user.tokens = user.tokens || {};
+  for (const service of ['gmail', 'calendar', 'tasks']) {
+    if (user.permissions?.[service]) {
+      user.tokens[service] = newToken;
+    }
+  }
 };
 
-const makeGoogleRequestWithRetry = async (user, url, params = {}) => {
+const makeGoogleRequestWithRetry = async (user, url, params = {}, service = 'gmail') => {
   try {
-    const headers = { Authorization: `Bearer ${user.googleToken}` };
+    const accessToken = getServiceAccessToken(user, service);
+    if (!accessToken) {
+      throw new Error(`${service} is not connected. Please reconnect Google services.`);
+    }
+    const headers = { Authorization: `Bearer ${accessToken}` };
     const res = await axios.get(url, { headers, params });
     return res.data;
   } catch (err) {
     if (err.response?.status === 401 && user.googleRefreshToken) {
       try {
         await refreshGoogleToken(user);
-        const headers = { Authorization: `Bearer ${user.googleToken}` };
+        const refreshedToken = getServiceAccessToken(user, service);
+        const headers = { Authorization: `Bearer ${refreshedToken}` };
         const res = await axios.get(url, { headers, params });
         return res.data;
       } catch (refreshErr) {
@@ -180,7 +209,7 @@ const makeGoogleRequestWithRetry = async (user, url, params = {}) => {
 
 const getGmailEmailsHelper = async (user, query = '', maxResults = 5) => {
   const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
-  const listData = await makeGoogleRequestWithRetry(user, `${GMAIL_API}/messages`, { q: query, maxResults });
+  const listData = await makeGoogleRequestWithRetry(user, `${GMAIL_API}/messages`, { q: query, maxResults }, 'gmail');
   const messages = listData.messages || [];
   if (messages.length === 0) return [];
 
@@ -190,7 +219,7 @@ const getGmailEmailsHelper = async (user, query = '', maxResults = 5) => {
         const msgDetail = await makeGoogleRequestWithRetry(user, `${GMAIL_API}/messages/${id}`, {
           format: 'metadata',
           metadataHeaders: ['From', 'Subject', 'Date']
-        });
+        }, 'gmail');
         const headers = msgDetail.payload?.headers || [];
         const getHeader = (name) => headers.find(h => h.name === name)?.value || '';
         return {
@@ -212,7 +241,7 @@ const getGmailEmailDetailHelper = async (user, messageId) => {
   const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
   const msgDetail = await makeGoogleRequestWithRetry(user, `${GMAIL_API}/messages/${messageId}`, {
     format: 'full'
-  });
+  }, 'gmail');
 
   let body = '';
   const payload = msgDetail.payload;
@@ -254,7 +283,7 @@ const listCalendarEventsHelper = async (user, timeMin = '', maxResults = 5) => {
     maxResults,
     singleEvents: true,
     orderBy: 'startTime'
-  });
+  }, 'calendar');
   return (data.items || []).map(event => ({
     id: event.id,
     summary: event.summary,
@@ -267,7 +296,8 @@ const listCalendarEventsHelper = async (user, timeMin = '', maxResults = 5) => {
 
 const createCalendarEventHelper = async (user, summary, description = '', startTime, endTime) => {
   const url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
-  const headers = { Authorization: `Bearer ${user.googleToken}` };
+  const accessToken = getServiceAccessToken(user, 'calendar');
+  const headers = { Authorization: `Bearer ${accessToken}` };
 
   const body = {
     summary,
@@ -282,7 +312,8 @@ const createCalendarEventHelper = async (user, summary, description = '', startT
   } catch (err) {
     if (err.response?.status === 401 && user.googleRefreshToken) {
       await refreshGoogleToken(user);
-      const headers = { Authorization: `Bearer ${user.googleToken}` };
+      const refreshedToken = getServiceAccessToken(user, 'calendar');
+      const headers = { Authorization: `Bearer ${refreshedToken}` };
       const res = await axios.post(url, body, { headers });
       return res.data;
     } else {
@@ -293,7 +324,7 @@ const createCalendarEventHelper = async (user, summary, description = '', startT
 
 const listGoogleTasksHelper = async (user, maxResults = 10) => {
   const url = 'https://tasks.googleapis.com/v1/lists/@default/tasks';
-  const data = await makeGoogleRequestWithRetry(user, url, { maxResults });
+  const data = await makeGoogleRequestWithRetry(user, url, { maxResults }, 'tasks');
   return (data.items || []).map(task => ({
     id: task.id,
     title: task.title,
@@ -305,7 +336,8 @@ const listGoogleTasksHelper = async (user, maxResults = 10) => {
 
 const createGoogleTaskHelper = async (user, title, notes = '') => {
   const url = 'https://tasks.googleapis.com/v1/lists/@default/tasks';
-  const headers = { Authorization: `Bearer ${user.googleToken}` };
+  const accessToken = getServiceAccessToken(user, 'tasks');
+  const headers = { Authorization: `Bearer ${accessToken}` };
   const body = { title, notes };
 
   try {
@@ -314,7 +346,8 @@ const createGoogleTaskHelper = async (user, title, notes = '') => {
   } catch (err) {
     if (err.response?.status === 401 && user.googleRefreshToken) {
       await refreshGoogleToken(user);
-      const headers = { Authorization: `Bearer ${user.googleToken}` };
+      const refreshedToken = getServiceAccessToken(user, 'tasks');
+      const headers = { Authorization: `Bearer ${refreshedToken}` };
       const res = await axios.post(url, body, { headers });
       return res.data;
     } else {
@@ -709,15 +742,14 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
   await getMCPClient();
   const geminiTools = mcpTools.map(mapMCPToolToGemini);
 
-  if (user?.googleToken) {
-    geminiTools.push(
-      gmailToolDeclaration,
-      getEmailDetailDeclaration,
-      calendarListDeclaration,
-      calendarCreateDeclaration,
-      tasksListDeclaration,
-      tasksCreateDeclaration
-    );
+  if (hasServiceAccess(user, 'gmail')) {
+    geminiTools.push(gmailToolDeclaration, getEmailDetailDeclaration);
+  }
+  if (hasServiceAccess(user, 'calendar')) {
+    geminiTools.push(calendarListDeclaration, calendarCreateDeclaration);
+  }
+  if (hasServiceAccess(user, 'tasks')) {
+    geminiTools.push(tasksListDeclaration, tasksCreateDeclaration);
   }
 
   let lastError;
@@ -780,7 +812,7 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
               let responseObj;
 
               if (call.name === 'search_gmail_emails') {
-                if (!user.googleToken) {
+                if (!hasServiceAccess(user, 'gmail')) {
                   responseObj = { error: 'Gmail is not connected. Please connect Gmail in the sidebar.' };
                 } else {
                   const query = call.args.query || '';
@@ -790,7 +822,7 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
                 }
               }
               else if (call.name === 'get_gmail_email_details') {
-                if (!user.googleToken) {
+                if (!hasServiceAccess(user, 'gmail')) {
                   responseObj = { error: 'Gmail is not connected. Please connect Gmail in the sidebar.' };
                 } else {
                   const details = await getGmailEmailDetailHelper(user, call.args.messageId);
@@ -798,7 +830,7 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
                 }
               }
               else if (call.name === 'list_calendar_events') {
-                if (!user.googleToken) {
+                if (!hasServiceAccess(user, 'calendar')) {
                   responseObj = { error: 'Google Calendar is not connected. Please connect Google in the sidebar.' };
                 } else {
                   const timeMin = call.args.timeMin || '';
@@ -808,7 +840,7 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
                 }
               }
               else if (call.name === 'create_calendar_event') {
-                if (!user.googleToken) {
+                if (!hasServiceAccess(user, 'calendar')) {
                   responseObj = { error: 'Google Calendar is not connected. Please connect Google in the sidebar.' };
                 } else {
                   const { summary, description, startTime, endTime } = call.args;
@@ -817,7 +849,7 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
                 }
               }
               else if (call.name === 'list_google_tasks') {
-                if (!user.googleToken) {
+                if (!hasServiceAccess(user, 'tasks')) {
                   responseObj = { error: 'Google Tasks is not connected. Please connect Google in the sidebar.' };
                 } else {
                   const max = Math.min(call.args.maxResults || 10, 20);
@@ -826,7 +858,7 @@ Current date/time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkat
                 }
               }
               else if (call.name === 'create_google_task') {
-                if (!user.googleToken) {
+                if (!hasServiceAccess(user, 'tasks')) {
                   responseObj = { error: 'Google Tasks is not connected. Please connect Google in the sidebar.' };
                 } else {
                   const { title, notes } = call.args;

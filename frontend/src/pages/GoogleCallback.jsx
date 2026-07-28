@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { exchangeGoogleCode } from '../services/api';
+import { exchangeGoogleCode, connectGoogleCallback } from '../services/api';
 import { setToken, setUser } from '../utils/storage';
 import { AlertCircle, CheckCircle2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import InteractiveLogo from '../components/InteractiveLogo';
@@ -9,18 +9,23 @@ import '../styles/pages.css';
 /**
  * GoogleCallback
  * Handles the redirect from Google after the user approves OAuth.
- * URL contains: ?code=<auth_code>&state=...
- * We send the code to the backend, receive a JWT, then redirect to /chat.
+ * Two flows:
+ *   1. Sign-in flow: exchanges code for JWT, stores user
+ *   2. Connect flow: exchanges code for service tokens (Gmail/Calendar/Tasks)
  */
 const GoogleCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('processing'); // 'processing' | 'success' | 'error'
+  const [status, setStatus] = useState('processing');
   const [errorMessage, setErrorMessage] = useState('');
-  const hasRun = useRef(false); // prevent double-call in strict mode
+  const hasRun = useRef(false);
 
+  const stateParam = searchParams.get('state') || '';
+  const isConnectFlow =
+    stateParam.startsWith('connect_') ||
+    localStorage.getItem('tom_connect_pending') === 'true';
   const isGmailConnection =
-    searchParams.get('state')?.startsWith('gmail_') ||
+    stateParam.startsWith('gmail_') ||
     localStorage.getItem('tom_gmail_pending') === 'true';
 
   useEffect(() => {
@@ -37,6 +42,8 @@ const GoogleCallback = () => {
           ? 'You cancelled the Google sign-in. You can try again anytime.'
           : `Google returned an error: ${error}`
       );
+      localStorage.removeItem('tom_connect_pending');
+      localStorage.removeItem('tom_gmail_pending');
       return;
     }
 
@@ -49,30 +56,41 @@ const GoogleCallback = () => {
     // Prevent React 18 Strict Mode duplicate execution
     const sessionKey = `google_auth_code_${code}`;
     if (sessionStorage.getItem(sessionKey)) {
-      console.log('[GoogleCallback] Authorization code already processed or processing. Skipping.');
-      // If a previous call succeeded, it will redirect shortly. We don't want to reset status to processing.
       return;
     }
     sessionStorage.setItem(sessionKey, 'true');
 
     const processCode = async () => {
       try {
-        const res = await exchangeGoogleCode(code);
-        const { token, user } = res.data.data;
-        setToken(token);
-        setUser(user);
-
-        // If user came from MCP "Connect Gmail" button, mark Gmail as connected
-        if (localStorage.getItem('tom_gmail_pending') === 'true') {
+        if (isConnectFlow) {
+          // ── Connect Flow: exchange code for service tokens ──
+          await connectGoogleCallback(code);
+          localStorage.removeItem('tom_connect_pending');
+          localStorage.setItem('tom_google_connect_success', 'true');
+          // Also mark gmail as connected for backward compat
           localStorage.setItem('tom_gmail_connected', 'true');
-          localStorage.removeItem('tom_gmail_pending');
-        }
+          setStatus('success');
+          setTimeout(() => navigate('/chat', { replace: true }), 800);
+        } else {
+          // ── Sign-in Flow: exchange code for JWT ──
+          const res = await exchangeGoogleCode(code);
+          const { token, user } = res.data.data;
+          setToken(token);
+          setUser(user);
 
-        setStatus('success');
-        setTimeout(() => navigate('/chat', { replace: true }), 800);
+          if (localStorage.getItem('tom_gmail_pending') === 'true') {
+            localStorage.setItem('tom_gmail_connected', 'true');
+            localStorage.removeItem('tom_gmail_pending');
+          }
+
+          setStatus('success');
+          setTimeout(() => navigate('/chat', { replace: true }), 800);
+        }
       } catch (err) {
         console.error('[GoogleCallback] Exchange failed:', err);
-        sessionStorage.removeItem(sessionKey); // let them retry if it failed
+        sessionStorage.removeItem(sessionKey);
+        localStorage.removeItem('tom_connect_pending');
+        localStorage.removeItem('tom_gmail_pending');
         const msg =
           err.response?.data?.message ||
           'Something went wrong during sign-in. Please try again.';
@@ -82,7 +100,7 @@ const GoogleCallback = () => {
     };
 
     processCode();
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, isConnectFlow]);
 
   return (
     <div className="auth-page">
@@ -97,12 +115,14 @@ const GoogleCallback = () => {
           <div style={{ padding: '12px 0' }}>
             <div className="google-callback-spinner" />
             <h2 className="auth-title" style={{ marginTop: '20px' }}>
-              {isGmailConnection ? 'Connecting Gmail…' : 'Signing you in…'}
+              {isConnectFlow ? 'Connecting Google Services…' : isGmailConnection ? 'Connecting Gmail…' : 'Signing you in…'}
             </h2>
             <p className="auth-subtitle">
-              {isGmailConnection
-                ? 'Saving your Gmail integration settings. This only takes a moment.'
-                : 'Verifying your Google account. This only takes a moment.'}
+              {isConnectFlow
+                ? 'Setting up Gmail, Calendar & Tasks integration. This only takes a moment.'
+                : isGmailConnection
+                  ? 'Saving your Gmail integration settings. This only takes a moment.'
+                  : 'Verifying your Google account. This only takes a moment.'}
             </p>
           </div>
         )}
@@ -111,12 +131,14 @@ const GoogleCallback = () => {
           <div style={{ padding: '12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <CheckCircle2 size={48} style={{ color: 'var(--success, #22c55e)', marginBottom: '12px' }} />
             <h2 className="auth-title">
-              {isGmailConnection ? 'Gmail Connected!' : 'Welcome to TOM.AI!'}
+              {isConnectFlow ? 'Google Services Connected!' : isGmailConnection ? 'Gmail Connected!' : 'Welcome to TOM.AI!'}
             </h2>
             <p className="auth-subtitle">
-              {isGmailConnection
-                ? 'Gmail integration configured successfully. Redirecting…'
-                : 'Redirecting you to your assistant…'}
+              {isConnectFlow
+                ? 'Gmail, Calendar & Tasks are now available. Redirecting…'
+                : isGmailConnection
+                  ? 'Gmail integration configured successfully. Redirecting…'
+                  : 'Redirecting you to your assistant…'}
             </p>
           </div>
         )}

@@ -7,6 +7,7 @@
 export const redirectToGoogle = () => {
   const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
   const redirectUri =
+    process.env.REACT_APP_GOOGLE_SIGNIN_REDIRECT_URI ||
     process.env.REACT_APP_GOOGLE_REDIRECT_URI ||
     `${window.location.origin}/auth/google/callback`;
 
