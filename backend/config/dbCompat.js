@@ -472,6 +472,19 @@ class ModelCompat {
         return isArray ? decoratedDocs : decoratedDocs[0];
     }
 
+    async insertMany(docs = []) {
+        const normalizedDocs = Array.isArray(docs) ? docs : [docs];
+        const createdDocs = [];
+
+        for (const data of normalizedDocs) {
+            const doc = new MongoDocument(data, this);
+            await doc.save();
+            createdDocs.push(doc);
+        }
+
+        return createdDocs;
+    }
+
     async deleteOne(query) {
         const col = await this.getCollection();
         const sanitized = sanitizeQueryObj(query);

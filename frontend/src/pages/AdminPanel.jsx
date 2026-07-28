@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import '../styles/admin.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || '/api').replace(/\/+$/, '');
 const API = `${API_BASE_URL}/admin`;
 const getToken = () => localStorage.getItem('tom_admin_token');
 const authHdr = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
@@ -86,7 +86,7 @@ function LoginScreen({ onLogin }) {
           {err && <div className="adm-error">{err}</div>}
           <button className="adm-btn adm-btn-primary adm-btn-full" style={{ marginTop: 18 }} disabled={busy}>{busy ? 'Signing in…' : 'Sign In'}</button>
         </form>
-        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: 'var(--adm-dim)' }}>Default: admin@tomai.com / Admin@123</div>
+        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: 'var(--adm-dim)' }}>Use the admin credentials configured in your backend environment.</div>
       </div>
     </div>
   );

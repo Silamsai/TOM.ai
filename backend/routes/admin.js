@@ -5,7 +5,7 @@ const path = require('node:path');
 const jwt = require('jsonwebtoken');
 
 const getAdminUsername = () => (process.env.ADMIN_USERNAME || 'admin@tomai.com').toLowerCase().trim();
-const getAdminPassword = () => process.env.ADMIN_PASSWORD || 'Admin@123';
+const getAdminPassword = () => (process.env.ADMIN_PASSWORD || '').trim();
 const getAdminSecret = () => (process.env.JWT_SECRET || 'secret') + '-admin';
 
 console.log('🔑 [TOM.AI Admin] Admin user configured dynamics loaded');
@@ -170,7 +170,14 @@ router.post('/login', (req, res) => {
   const uClean = (username || '').trim().toLowerCase();
   const pClean = (password || '').trim();
   const expectedU = getAdminUsername();
-  const expectedP = getAdminPassword().trim();
+  const expectedP = getAdminPassword();
+
+  if (!expectedP) {
+    return res.status(503).json({
+      success: false,
+      message: 'Admin login is disabled until ADMIN_PASSWORD is configured on the backend.'
+    });
+  }
 
   console.log('[Admin Login Debug] Cleaned Sent:', { uClean, pClean });
   console.log('[Admin Login Debug] Cleaned Expected:', { expectedU, expectedP });
@@ -369,7 +376,14 @@ router.put('/profile', async (req, res) => {
 
 router.put('/change-password', (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
-  if (currentPassword !== (process.env.ADMIN_PASSWORD || 'Admin@123'))
+  const configuredPassword = getAdminPassword();
+  if (!configuredPassword) {
+    return res.status(400).json({
+      success: false,
+      message: 'ADMIN_PASSWORD is not configured. Set it in the backend environment before changing it here.'
+    });
+  }
+  if (currentPassword !== configuredPassword)
     return res.status(400).json({ success: false, message: 'Current password is incorrect' });
   process.env.ADMIN_PASSWORD = newPassword;
   res.json({ success: true, message: 'Password updated (until server restart). Add ADMIN_PASSWORD to .env to persist.' });

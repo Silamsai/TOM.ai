@@ -1,100 +1,175 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getAllSessions, createSession, deleteSession, setCurrentId, getCurrentId, renameSession } from '../utils/chatSessions';
-import { getGmailAuthUrl, getPublicMcps, deleteChatConversation } from '../services/api';
-import { getUser, getGuestProfile } from '../utils/storage';
+import {
+  getGoogleConnectUrl, getUserIntegrations,
+  revokeGmailAccess, revokeCalendarAccess, revokeTasksAccess, revokeAllGoogle,
+  getPublicMcps, deleteChatConversation
+} from '../services/api';
+import { getUser, getGuestProfile, getToken } from '../utils/storage';
 import {
   IconTrash, IconClose, IconPencil,
   IconConnect, IconPlug, IconLock, IconCheck, IconLoader,
 } from './icons/UiIcons';
 import '../styles/sidebar.css';
 
-/* ── Hardcoded MCP Applications List ── */
-const MCP_APPS = [
-  {
-    id: 'calendar',
-    name: 'Google Calendar',
-    desc: 'Read & create calendar events',
-    icon: `<svg viewBox="0 0 48 48" width="28" height="28"><rect width="48" height="48" rx="8" fill="#fff"/><path fill="#1a73e8" d="M35 8H13a5 5 0 00-5 5v22a5 5 0 005 5h22a5 5 0 005-5V13a5 5 0 00-5-5z"/><rect x="9" y="16" width="30" height="20" rx="2" fill="#fff"/><text x="24" y="32" textAnchor="middle" fill="#1a73e8" fontSize="14" fontWeight="bold">31</text><rect x="16" y="8" width="4" height="8" rx="2" fill="#185abc"/><rect x="28" y="8" width="4" height="8" rx="2" fill="#185abc"/></svg>`
-  },
+/* ── Google Services (real OAuth) ── */
+const GOOGLE_APPS = [
   {
     id: 'gmail',
     name: 'Gmail',
     desc: 'Read emails & draft replies',
+    service: 'gmail',
     icon: `<svg viewBox="0 0 48 48" width="28" height="28"><path fill="#fafafa" d="M0 8h48v32H0z"/><path fill="#EA4335" d="M0 8l24 16L48 8H0z"/><path fill="#34A853" d="M48 8v32l-12-16 12-16z"/><path fill="#FBBC05" d="M0 40V8l12 16L0 40z"/><path fill="#C5221F" d="M0 40l12-16 12 8 12-8 12 16H0z"/></svg>`
   },
+  {
+    id: 'calendar',
+    name: 'Google Calendar',
+    desc: 'Read & create calendar events',
+    service: 'calendar',
+    icon: `<svg viewBox="0 0 48 48" width="28" height="28"><rect width="48" height="48" rx="8" fill="#fff"/><path fill="#1a73e8" d="M35 8H13a5 5 0 00-5 5v22a5 5 0 005 5h22a5 5 0 005-5V13a5 5 0 00-5-5z"/><rect x="9" y="16" width="30" height="20" rx="2" fill="#fff"/><text x="24" y="32" textAnchor="middle" fill="#1a73e8" fontSize="14" fontWeight="bold">31</text><rect x="16" y="8" width="4" height="8" rx="2" fill="#185abc"/><rect x="28" y="8" width="4" height="8" rx="2" fill="#185abc"/></svg>`
+  },
+  {
+    id: 'tasks',
+    name: 'Google Tasks',
+    desc: 'Manage your task lists',
+    service: 'tasks',
+    icon: `<svg viewBox="0 0 48 48" width="28" height="28"><rect width="48" height="48" rx="8" fill="#fff"/><path fill="#1a73e8" d="M35 8H13a5 5 0 00-5 5v22a5 5 0 005 5h22a5 5 0 005-5V13a5 5 0 00-5-5z"/><rect x="9" y="12" width="30" height="24" rx="2" fill="#fff"/><path d="M16 20l3 3 6-6" stroke="#1a73e8" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/><rect x="16" y="28" width="16" height="2" rx="1" fill="#1a73e8" opacity="0.3"/><rect x="16" y="33" width="10" height="2" rx="1" fill="#1a73e8" opacity="0.2"/></svg>`
+  },
+];
+
+/* ── Third-party services (Coming Soon) ── */
+const THIRD_PARTY_APPS = [
   {
     id: 'drive',
     name: 'Google Drive',
     desc: 'Access files & documents',
+    comingSoon: true,
     icon: `<svg viewBox="0 0 48 48" width="28" height="28"><path fill="#4285F4" d="M16 40L2 16l8-4 14 24z"/><path fill="#34A853" d="M32 40L46 16l-8-4-14 24z"/><path fill="#FBBC05" d="M2 16l14 24h20L22 16z"/></svg>`
   },
   {
     id: 'notion',
     name: 'Notion',
     desc: 'Read & write Notion pages',
+    comingSoon: true,
     icon: `<svg viewBox="0 0 48 48" width="28" height="28"><rect width="48" height="48" rx="8" fill="#fff" stroke="#e0e0e0"/><text x="24" y="34" textAnchor="middle" fill="#000" fontSize="26" fontWeight="900" fontFamily="serif">N</text></svg>`
   },
   {
     id: 'slack',
     name: 'Slack',
     desc: 'Send & read messages',
+    comingSoon: true,
     icon: `<svg viewBox="0 0 48 48" width="28" height="28"><path fill="#E01E5A" d="M13 30a4 4 0 01-4 4 4 4 0 01-4-4 4 4 0 014-4h4v4z"/><path fill="#E01E5A" d="M15 30a4 4 0 014-4 4 4 0 014 4v10a4 4 0 01-4 4 4 4 0 01-4-4V30z"/><path fill="#36C5F0" d="M19 13a4 4 0 01-4-4 4 4 0 014-4 4 4 0 014 4v4h-4z"/><path fill="#36C5F0" d="M19 15a4 4 0 014 4 4 4 0 01-4 4H9a4 4 0 01-4-4 4 4 0 014-4h10z"/><path fill="#2EB67D" d="M36 19a4 4 0 014 4 4 4 0 01-4 4 4 4 0 01-4-4v-4h4z"/><path fill="#2EB67D" d="M34 19a4 4 0 01-4-4 4 4 0 014-4h10a4 4 0 014 4 4 4 0 01-4 4H34z"/><path fill="#ECB22E" d="M30 36a4 4 0 01-4 4 4 4 0 01-4-4 4 4 0 014-4h4v4z"/><path fill="#ECB22E" d="M30 34a4 4 0 014-4 4 4 0 014 4v10a4 4 0 01-4 4 4 4 0 01-4-4V34z"/></svg>`
   },
   {
     id: 'github',
     name: 'GitHub',
     desc: 'Access repos & issues',
+    comingSoon: true,
     icon: `<svg viewBox="0 0 48 48" width="28" height="28"><rect width="48" height="48" rx="8" fill="#24292e"/><path fill="#fff" d="M24 8C15.16 8 8 15.16 8 24c0 7.08 4.59 13.09 10.96 15.21.8.15 1.09-.35 1.09-.77 0-.38-.01-1.39-.02-2.73-4.45.97-5.39-2.14-5.39-2.14-.73-1.85-1.78-2.34-1.78-2.34-1.45-.99.11-.97.11-.97 1.61.11 2.45 1.65 2.45 1.65 1.43 2.45 3.75 1.74 4.66 1.33.14-1.04.56-1.74 1.02-2.14-3.56-.4-7.3-1.78-7.3-7.93 0-1.75.63-3.18 1.65-4.31-.17-.41-.72-2.04.16-4.25 0 0 1.34-.43 4.4 1.64a15.3 15.3 0 014-.54c1.36.01 2.73.18 4 .54 3.05-2.07 4.39-1.64 4.39-1.64.88 2.21.33 3.84.16 4.25 1.03 1.13 1.65 2.56 1.65 4.31 0 6.16-3.75 7.52-7.32 7.92.57.49 1.09 1.47 1.09 2.96 0 2.14-.02 3.86-.02 4.39 0 .43.29.93 1.1.77C35.42 37.08 40 31.07 40 24 40 15.16 32.84 8 24 8z"/></svg>`
   }
 ];
 
 /* ── Connect apps modal ── */
 export const ConnectModal = ({ onClose }) => {
-  const [mcpApps, setMcpApps] = useState(MCP_APPS);
-  const [connecting, setConnecting] = useState(null);
-  const [connected, setConnected] = useState([]);
-  const [gmailConnected, setGmailConnected] = useState(
-    () => localStorage.getItem('tom_gmail_connected') === 'true'
-  );
+  const isAuthenticated = !!getToken();
+  const [integrations, setIntegrations] = useState({ gmail: false, calendar: false, tasks: false });
+  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [connecting, setConnecting] = useState(null);   // 'google' | appId
+  const [disconnecting, setDisconnecting] = useState(null); // appId
 
+  // Fetch real integration status from backend on mount
   useEffect(() => {
-    getPublicMcps()
-      .then(res => {
-        const d = res.data;
-        if (d.success && d.data && d.data.length > 0) setMcpApps(d.data);
-      })
-      .catch(() => { });
-  }, []);
-
-  const handleConnect = async (appId) => {
-    if (appId === 'gmail') {
-      setConnecting('gmail');
-      try {
-        const res = await getGmailAuthUrl();
-        const data = res.data;
-        if (data.authUrl) {
-          localStorage.setItem('tom_gmail_pending', 'true');
-          window.location.href = data.authUrl;
-        }
-      } catch {
-        alert('Backend not reachable. Make sure the backend is running.');
-        setConnecting(null);
-      }
+    if (!isAuthenticated) {
+      setLoadingStatus(false);
       return;
     }
-    setConnecting(appId);
-    await new Promise(r => setTimeout(r, 1000));
-    setConnected(prev => [...prev, appId]);
-    setConnecting(null);
+    getUserIntegrations()
+      .then(res => {
+        const d = res.data?.data?.integrations;
+        if (d) {
+          setIntegrations({
+            gmail: !!d.gmail?.connected,
+            calendar: !!d.calendar?.connected,
+            tasks: !!d.tasks?.connected,
+          });
+        }
+      })
+      .catch(() => { })
+      .finally(() => setLoadingStatus(false));
+  }, [isAuthenticated]);
+
+  // Check if returning from a connect flow
+  useEffect(() => {
+    if (localStorage.getItem('tom_google_connect_success') === 'true') {
+      localStorage.removeItem('tom_google_connect_success');
+      // Refresh integrations
+      if (isAuthenticated) {
+        getUserIntegrations()
+          .then(res => {
+            const d = res.data?.data?.integrations;
+            if (d) {
+              setIntegrations({
+                gmail: !!d.gmail?.connected,
+                calendar: !!d.calendar?.connected,
+                tasks: !!d.tasks?.connected,
+              });
+            }
+          })
+          .catch(() => { });
+      }
+    }
+  }, [isAuthenticated]);
+
+  const googleConnectedCount = [integrations.gmail, integrations.calendar, integrations.tasks].filter(Boolean).length;
+  const allGoogleConnected = googleConnectedCount === 3;
+
+  const handleConnectGoogle = async () => {
+    if (!isAuthenticated) {
+      alert('Please sign in to connect Google services.');
+      return;
+    }
+    setConnecting('google');
+    try {
+      const res = await getGoogleConnectUrl();
+      const authUrl = res.data?.data?.authUrl;
+      if (authUrl) {
+        localStorage.setItem('tom_connect_pending', 'true');
+        window.location.href = authUrl;
+      }
+    } catch {
+      alert('Could not reach the backend. Make sure it is running.');
+      setConnecting(null);
+    }
   };
 
-  const handleDisconnect = (appId) => {
-    if (appId === 'gmail') {
-      localStorage.setItem('tom_gmail_connected', 'false');
-      setGmailConnected(false);
-    } else {
-      setConnected(prev => prev.filter(id => id !== appId));
+  const revokeMap = {
+    gmail: revokeGmailAccess,
+    calendar: revokeCalendarAccess,
+    tasks: revokeTasksAccess,
+  };
+
+  const handleDisconnect = async (serviceKey) => {
+    setDisconnecting(serviceKey);
+    try {
+      await revokeMap[serviceKey]();
+      setIntegrations(prev => ({ ...prev, [serviceKey]: false }));
+    } catch {
+      alert('Failed to disconnect. Please try again.');
+    } finally {
+      setDisconnecting(null);
+    }
+  };
+
+  const handleDisconnectAll = async () => {
+    setDisconnecting('all');
+    try {
+      await revokeAllGoogle();
+      setIntegrations({ gmail: false, calendar: false, tasks: false });
+    } catch {
+      alert('Failed to disconnect. Please try again.');
+    } finally {
+      setDisconnecting(null);
     }
   };
 
@@ -125,34 +200,120 @@ export const ConnectModal = ({ onClose }) => {
           Link your apps and services to tom.ai. Once connected, the assistant can work with your data only when you allow it.
         </p>
 
+        {/* ── Google Services Section ── */}
+        <div className="mcp-section-label">
+          <svg width="14" height="14" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+          </svg>
+          <span>Google Services</span>
+          {allGoogleConnected && (
+            <button className="mcp-disconnect-all" onClick={handleDisconnectAll} disabled={disconnecting === 'all'}>
+              {disconnecting === 'all' ? 'Disconnecting…' : 'Disconnect All'}
+            </button>
+          )}
+        </div>
+
+        {!isAuthenticated && (
+          <div className="mcp-auth-notice">
+            <IconLock size={13} />
+            <span>Sign in to connect your Google account and enable integrations.</span>
+          </div>
+        )}
+
+        {loadingStatus ? (
+          <div className="mcp-loading-status">
+            <IconLoader size={14} /> Loading connection status…
+          </div>
+        ) : (
+          <>
+            {/* Connect All Google button — show when not all connected */}
+            {isAuthenticated && !allGoogleConnected && (
+              <button
+                className="mcp-connect-google-btn"
+                onClick={handleConnectGoogle}
+                disabled={connecting === 'google'}
+              >
+                {connecting === 'google' ? (
+                  <span className="mcp-btn-inner"><IconLoader size={14} /> Redirecting to Google…</span>
+                ) : (
+                  <span className="mcp-btn-inner">
+                    <svg width="16" height="16" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
+                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                    </svg>
+                    Connect Google Account
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Individual Google services */}
+            <div className="mcp-apps">
+              {GOOGLE_APPS.map(app => {
+                const isConn = integrations[app.service];
+                const isDisc = disconnecting === app.service;
+                return (
+                  <div key={app.id} className={`mcp-app ${isConn ? 'mcp-app-connected' : ''}`}>
+                    <span className="mcp-app-icon">{renderAppIcon(app.icon, app.name)}</span>
+                    <div className="mcp-app-info">
+                      <span className="mcp-app-name">{app.name}</span>
+                      <div className="mcp-app-desc">{app.desc}</div>
+                    </div>
+                    {isConn ? (
+                      <button
+                        className="mcp-connect-btn connected"
+                        onClick={() => handleDisconnect(app.service)}
+                        disabled={isDisc}
+                        title="Click to disconnect"
+                      >
+                        <span className="mcp-btn-inner">
+                          {isDisc ? <><IconLoader size={12} /> …</> : <><IconCheck size={12} /> Connected</>}
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        className="mcp-connect-btn"
+                        onClick={handleConnectGoogle}
+                        disabled={connecting === 'google' || !isAuthenticated}
+                        title={isAuthenticated ? 'Connect via Google' : 'Sign in first'}
+                      >
+                        <span className="mcp-btn-inner"><IconConnect size={12} /> Connect</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* ── Third-Party Services Section ── */}
+        <div className="mcp-section-label" style={{ marginTop: '20px' }}>
+          <IconPlug size={13} />
+          <span>Third-Party Integrations</span>
+        </div>
+
         <div className="mcp-apps">
-          {mcpApps.map(app => {
-            const isGmail = app.id === 'gmail';
-            const isConn = isGmail ? gmailConnected : connected.includes(app.id);
-            const isLoading = connecting === app.id;
-            return (
-              <div key={app.id} className={`mcp-app ${isConn ? 'mcp-app-connected' : ''}`}>
-                <span className="mcp-app-icon">{renderAppIcon(app.icon, app.name)}</span>
-                <div className="mcp-app-info">
-                  <span className="mcp-app-name">{app.name}</span>
-                  <div className="mcp-app-desc">{app.desc}</div>
-                </div>
-                <button
-                  className={`mcp-connect-btn ${isConn ? 'connected' : ''}`}
-                  onClick={() => isConn ? handleDisconnect(app.id) : handleConnect(app.id)}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <span className="mcp-btn-inner"><IconLoader size={12} /> Connecting</span>
-                  ) : isConn ? (
-                    <span className="mcp-btn-inner"><IconCheck size={12} /> Connected</span>
-                  ) : (
-                    <span className="mcp-btn-inner"><IconConnect size={12} /> {isGmail ? 'Connect Gmail' : 'Connect'}</span>
-                  )}
-                </button>
+          {THIRD_PARTY_APPS.map(app => (
+            <div key={app.id} className="mcp-app mcp-app-coming-soon">
+              <span className="mcp-app-icon">{renderAppIcon(app.icon, app.name)}</span>
+              <div className="mcp-app-info">
+                <span className="mcp-app-name">
+                  {app.name}
+                  <span className="mcp-coming-soon-badge">Coming Soon</span>
+                </span>
+                <div className="mcp-app-desc">{app.desc}</div>
               </div>
-            );
-          })}
+              <button className="mcp-connect-btn mcp-btn-disabled" disabled title="Coming soon">
+                <span className="mcp-btn-inner"><IconConnect size={12} /> Connect</span>
+              </button>
+            </div>
+          ))}
         </div>
 
         <p className="mcp-note">

@@ -12,6 +12,7 @@ const { validateEmail, validatePassword, validateOTP } = require('../utils/valid
 const { ERRORS } = require('../config/constants');
 
 const IS_DEV = process.env.NODE_ENV !== 'production';
+const getAdminPassword = () => (process.env.ADMIN_PASSWORD || '').trim();
 
 /**
  * Attempt to send email, but in development fall back gracefully.
@@ -106,10 +107,19 @@ router.post('/login', async (req, res, next) => {
 
     const normalizedEmail = email.toLowerCase().trim();
     const targetAdminUsername = getAdminUsername();
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
+    const adminPassword = getAdminPassword();
 
     // Check if logging in as admin
-    if (normalizedEmail === targetAdminUsername && password === ADMIN_PASSWORD) {
+    if (normalizedEmail === targetAdminUsername) {
+      if (!adminPassword) {
+        return res.status(503).json({
+          success: false,
+          message: 'Admin login is disabled until ADMIN_PASSWORD is configured on the backend.'
+        });
+      }
+    }
+
+    if (normalizedEmail === targetAdminUsername && password === adminPassword) {
       const adminToken = jwt.sign({ role: 'admin', username: normalizedEmail }, getAdminSecret(), { expiresIn: '7d' });
       return res.status(200).json({
         success: true,
