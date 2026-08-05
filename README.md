@@ -2,7 +2,24 @@
 
 TOM.AI is a React-based personal assistant with guest chat, authenticated chat, Google integrations, task management, personal-document RAG, image generation, and an admin panel for model/provider configuration.
 
-## Current architecture
+## Documentation
+
+Full technical docs live in **[`docs/`](./docs/README.md)**:
+
+| Topic | Link |
+|-------|------|
+| How it works | [docs/architecture.md](./docs/architecture.md) |
+| Tech stack | [docs/tech-stack.md](./docs/tech-stack.md) |
+| Features | [docs/features.md](./docs/features.md) |
+| Backend services | [docs/services.md](./docs/services.md) |
+| API | [docs/api.md](./docs/api.md) |
+| Auth | [docs/auth.md](./docs/auth.md) |
+| Personal RAG | [docs/rag.md](./docs/rag.md) |
+| Deployment | [docs/deployment.md](./docs/deployment.md) |
+| Environment variables | [docs/environment.md](./docs/environment.md) |
+| Custom assets | [docs/assets.md](./docs/assets.md) |
+
+## Current architecture (short)
 
 ### Frontend
 - React 18 SPA in `frontend`
@@ -18,29 +35,22 @@ TOM.AI is a React-based personal assistant with guest chat, authenticated chat, 
 
 ### AI and integrations
 - Gemini is the primary chat and embedding provider
-- Optional OpenAI and Anthropic routing exists when API keys are configured
-- Google OAuth is used for sign-in and for Gmail / Calendar / Tasks integrations
-- Personal documents are chunked, embedded, and stored in MongoDB for RAG retrieval
+- Optional OpenAI and Anthropic routing when API keys are configured
+- Google OAuth for sign-in and for Gmail / Calendar / Tasks
+- Personal documents are chunked, embedded, and stored in MongoDB for RAG
 
 ### Email and scheduled jobs
-- Email delivery uses SendGrid or Resend
-- Worker cron triggers are defined in `backend/wrangler.toml`
-- Reminder and cleanup jobs live in `backend/services/cronJobs.js`
+- Email via SendGrid or Resend
+- Worker cron triggers in `backend/wrangler.toml`
+- Reminder and cleanup jobs in `backend/services/cronJobs.js`
 
 ## Repo layout
 
 ```text
 TOM.ai/
 ├── backend/
-│   ├── config/
-│   ├── middleware/
-│   ├── models/
-│   ├── routes/
-│   ├── services/
-│   └── utils/
 ├── frontend/
-│   ├── public/
-│   └── src/
+├── docs/          ← technical documentation
 └── README.md
 ```
 
@@ -48,107 +58,50 @@ TOM.ai/
 
 ### Option 1: frontend + local backend
 
-Use this when you want full local development.
-
-1. Install backend dependencies:
+1. Backend:
    ```bash
    cd backend
    npm install
-   ```
-2. Configure backend environment variables:
-   ```env
-   MONGODB_URI=your_mongodb_connection_uri
-   DB_NAME=tom-ai-db
-   JWT_SECRET=your_long_secure_jwt_secret
-   GEMINI_API_KEY=your_gemini_api_key
-   GOOGLE_CLIENT_ID=your_google_oauth_client_id
-   GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
-   FRONTEND_URL=http://localhost:3000
-   ADMIN_PASSWORD=choose_a_strong_admin_password
-   SENDGRID_API_KEY=optional
-   RESEND_API_KEY=optional
-   RESEND_FROM=optional
-   GOOGLE_SIGNIN_REDIRECT_URI=http://localhost:3000/auth/google/callback
-   GOOGLE_CONNECT_REDIRECT_URI=http://localhost:3000/auth/google/callback
-   ```
-3. Start the backend:
-   ```bash
+   # configure .dev.vars — see docs/environment.md
    npm run dev
    ```
-4. Install frontend dependencies:
+2. Frontend:
    ```bash
-   cd ../frontend
+   cd frontend
    npm install
-   ```
-5. Configure the frontend:
-   ```env
-   REACT_APP_API_URL=http://localhost:5000/api
-   REACT_APP_GOOGLE_CLIENT_ID=your_google_oauth_client_id
-   REACT_APP_GOOGLE_SIGNIN_REDIRECT_URI=http://localhost:3000/auth/google/callback
-   REACT_APP_GOOGLE_CONNECT_REDIRECT_URI=http://localhost:3000/auth/google/callback
-   ```
-6. Start the frontend:
-   ```bash
+   # configure .env — see docs/environment.md
    npm start
    ```
 
-### Option 2: frontend only against a deployed backend
+### Option 2: frontend against a deployed backend
 
-Use this when the backend is already deployed to Cloudflare Workers.
+Set `REACT_APP_API_URL` to the Worker `/api` URL, then `npm start` in `frontend`.
 
-```env
-REACT_APP_API_URL=https://your-deployed-backend.example.com/api
-REACT_APP_GOOGLE_CLIENT_ID=your_google_oauth_client_id
-REACT_APP_GOOGLE_SIGNIN_REDIRECT_URI=http://localhost:3000/auth/google/callback
-REACT_APP_GOOGLE_CONNECT_REDIRECT_URI=http://localhost:3000/auth/google/callback
-```
-
-Then run:
+## Deploy backend
 
 ```bash
-cd frontend
-npm install
-npm start
+cd backend
+npm run deploy
 ```
 
-Notes:
-- The frontend now defaults to `/api` when no explicit API URL is provided, which is useful for hosted same-origin setups.
-- For local `npm start`, set `REACT_APP_API_URL` explicitly unless your frontend is being served behind a proxy that already exposes `/api`.
-
-## Deployment notes
-
-### Backend
-- Deploy with Wrangler from `backend`
-- Required Worker secrets include:
-  - `MONGODB_URI`
-  - `JWT_SECRET`
-  - `GOOGLE_CLIENT_ID`
-  - `GOOGLE_CLIENT_SECRET`
-  - `GEMINI_API_KEY`
-  - `ADMIN_PASSWORD`
-  - email provider secrets if email is needed
-
-### Frontend
-- `frontend/vercel.json` only handles SPA history fallback
-- For hosted frontend deployments, prefer setting `REACT_APP_API_URL` to the deployed backend instead of relying on a hardcoded rewrite target
+Details: [docs/deployment.md](./docs/deployment.md).
 
 ## Main API areas
 
 - `POST /api/auth/login`
 - `POST /api/auth/google/callback`
 - `GET /api/oauth/google/connect-url`
-- `POST /api/oauth/google/connect-callback`
 - `POST /api/chat/message`
-- `GET /api/chat/history`
 - `POST /api/tasks/create`
-- `GET /api/tasks/list`
 - `POST /api/rag/upload`
-- `GET /api/rag/documents`
 - `POST /api/image/generate`
 - `GET /api/admin/ai-models-public`
+
+Full list: [docs/api.md](./docs/api.md).
 
 ## Important operational notes
 
 - Admin login is disabled unless `ADMIN_PASSWORD` is configured.
-- Google sign-in and Google integration connect flows can use separate redirect URI environment variables.
-- Task cleanup only removes completed or cancelled tasks that have been inactive for 30+ days.
+- Google sign-in and Google connect can use separate redirect URI env vars.
+- Personal RAG uploads allow up to **100 MB** per file.
+- Task cleanup removes completed/cancelled tasks inactive for 30+ days.
