@@ -6,6 +6,7 @@ import { redirectToGoogle } from '../utils/googleAuth';
 import { AlertCircle, CheckCircle, Mail, Eye, EyeOff, Sparkles, X, ArrowLeft, ArrowRight } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import InteractiveLogo from './InteractiveLogo';
+import AuthLegalNotice from './AuthLegalNotice';
 import '../styles/modal.css';
 
 const AuthModal = ({ isOpen, onClose, onSuccess }) => {
@@ -266,6 +267,8 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
             )}
           </>
         )}
+
+        <AuthLegalNotice />
       </div>
     </div>
   );

@@ -7,6 +7,8 @@ import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
+import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import Chat from './pages/Chat';
 import TodoList from './pages/TodoList';
 import GoogleCallback from './pages/GoogleCallback';
@@ -47,6 +49,8 @@ const AnimatedRoutes = () => {
       <Route path="/login" element={<AuthLayout><Login /></AuthLayout>} />
       <Route path="/signup" element={<AuthLayout><Signup /></AuthLayout>} />
       <Route path="/forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/auth/google/callback" element={<GoogleCallback />} />
       <Route path="/admin" element={<AdminPanel />} />
       <Route path="/image-gen" element={<ImageGen />} />

@@ -20,7 +20,12 @@ import {
   AlertTriangle,
   Cpu,
   X,
-  BookOpen
+  BookOpen,
+  Zap,
+  Bot,
+  PenLine,
+  Leaf,
+  Gem,
 } from 'lucide-react';
 import '../styles/admin.css';
 
@@ -29,14 +34,40 @@ const API = `${API_BASE_URL}/admin`;
 const getToken = () => localStorage.getItem('tom_admin_token');
 const authHdr = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 
-const renderIcon = (icon) => {
-  if (!icon) return <Plug size={14} />;
+const ICON_ALIASES = {
+  '⚡': 'zap',
+  '✨': 'sparkles',
+  '🧠': 'brain',
+  '🤖': 'bot',
+  '🔹': 'gem',
+  '✍️': 'pen',
+  '🎍': 'leaf',
+  '🔌': 'plug',
+};
+
+const renderIcon = (icon, size = 14) => {
+  if (!icon) return <Plug size={size} />;
   if (typeof icon !== 'string') return icon;
   const t = icon.trim();
-  if (t === '🔌') return <Plug size={14} />;
   if (t.startsWith('<svg')) return <span className="mcp-svg-wrapper" dangerouslySetInnerHTML={{ __html: t }} />;
   if (t.startsWith('data:') || t.startsWith('http') || t.startsWith('/')) return <img src={t} alt="" />;
-  return <span>{t}</span>;
+
+  const key = ICON_ALIASES[t] || t.toLowerCase();
+  switch (key) {
+    case 'zap': return <Zap size={size} style={{ color: '#fbbf24' }} />;
+    case 'sparkles': return <Sparkles size={size} style={{ color: '#38bdf8' }} />;
+    case 'brain': return <Brain size={size} style={{ color: '#a78bfa' }} />;
+    case 'bot': return <Bot size={size} style={{ color: '#10b981' }} />;
+    case 'gem':
+    case 'diamond': return <Gem size={size} style={{ color: '#38bdf8' }} />;
+    case 'pen':
+    case 'penline': return <PenLine size={size} style={{ color: '#f59e0b' }} />;
+    case 'leaf': return <Leaf size={size} style={{ color: '#34d399' }} />;
+    case 'terminal': return <Terminal size={size} />;
+    case 'plug': return <Plug size={size} />;
+    case 'cpu': return <Cpu size={size} />;
+    default: return <Cpu size={size} />;
+  }
 };
 
 const Toast = ({ msg, type, onDone }) => {
@@ -560,7 +591,7 @@ function AITab({ toast }) {
                 className="adm-input"
                 value={iconInput}
                 onChange={e => setIconInput(e.target.value)}
-                placeholder="✨ or <svg>..."
+                placeholder="zap, brain, bot, or <svg>..."
                 disabled={busy}
                 style={{ flex: 1 }}
               />

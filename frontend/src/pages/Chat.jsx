@@ -36,7 +36,14 @@ import {
   LogOut,
   ChevronDown,
   Upload,
-  Share2
+  Share2,
+  ImagePlus,
+  Zap,
+  Bot,
+  Cpu,
+  PenLine,
+  Leaf,
+  Gem,
 } from 'lucide-react';
 import '../styles/pages.css';
 import '../styles/sidebar.css';
@@ -82,48 +89,68 @@ const DEFAULT_MODELS = [
   { id: 'gemini-flash-latest', name: 'Gemini Flash Latest', shortName: 'Flash Latest', desc: 'Fast, responsive & multimodal', color: '#38bdf8', icon: 'zap' },
 ];
 
-const getModelIcon = (iconName) => {
-  switch (iconName) {
+const ICON_ALIASES = {
+  '⚡': 'zap',
+  '✨': 'sparkles',
+  '🧠': 'brain',
+  '🤖': 'bot',
+  '🔹': 'gem',
+  '✍️': 'pen',
+  '🎍': 'leaf',
+  '🔌': 'plug',
+};
+
+const getModelIcon = (iconName, size = 13) => {
+  const key = ICON_ALIASES[iconName] || String(iconName || '').toLowerCase().trim();
+  const style = { display: 'inline-block', verticalAlign: 'middle', flexShrink: 0 };
+
+  switch (key) {
     case 'zap':
-    case '⚡':
-      return <Sparkles size={13} style={{ color: '#fbbf24', display: 'inline-block', verticalAlign: 'middle' }} />;
+      return <Zap size={size} style={{ ...style, color: '#fbbf24' }} />;
+    case 'sparkles':
+      return <Sparkles size={size} style={{ ...style, color: '#38bdf8' }} />;
     case 'brain':
-    case '🧠':
-      return <Brain size={13} style={{ color: '#a78bfa', display: 'inline-block', verticalAlign: 'middle' }} />;
+      return <Brain size={size} style={{ ...style, color: '#a78bfa' }} />;
     case 'bot':
-    case '🤖':
-      return <Terminal size={13} style={{ color: '#38bdf8', display: 'inline-block', verticalAlign: 'middle' }} />;
+      return <Bot size={size} style={{ ...style, color: '#10b981' }} />;
+    case 'gem':
+    case 'diamond':
+      return <Gem size={size} style={{ ...style, color: '#38bdf8' }} />;
+    case 'pen':
+    case 'penline':
+      return <PenLine size={size} style={{ ...style, color: '#f59e0b' }} />;
+    case 'leaf':
+      return <Leaf size={size} style={{ ...style, color: '#34d399' }} />;
+    case 'terminal':
+      return <Terminal size={size} style={{ ...style, color: '#38bdf8' }} />;
     default:
-      return <Sparkles size={13} style={{ display: 'inline-block', verticalAlign: 'middle' }} />;
+      return <Cpu size={size} style={{ ...style, color: '#a0a0a0' }} />;
   }
 };
 
 const renderModelProviderIcon = (m, size = 13) => {
-  if (m.providerIcon) {
-    const t = String(m.providerIcon).trim();
-    if (t.startsWith('<svg')) {
-      return (
-        <span
-          style={{ width: size, height: size, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle' }}
-          dangerouslySetInnerHTML={{ __html: t }}
-        />
-      );
-    }
-    if (t.startsWith('data:') || t.startsWith('http') || t.startsWith('/')) {
-      return (
-        <img
-          src={t}
-          alt=""
-          style={{ width: size, height: size, objectFit: 'contain', verticalAlign: 'middle' }}
-        />
-      );
-    }
-    if (t.length > 0) {
-      return <span style={{ fontSize: `${size}px`, lineHeight: 1, verticalAlign: 'middle' }}>{t}</span>;
-    }
+  // Prefer model-specific icon, then provider icon
+  const raw = (m.icon || m.providerIcon || '').toString().trim();
+
+  if (raw.startsWith('<svg')) {
+    return (
+      <span
+        style={{ width: size, height: size, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle' }}
+        dangerouslySetInnerHTML={{ __html: raw }}
+      />
+    );
+  }
+  if (raw.startsWith('data:') || raw.startsWith('http') || raw.startsWith('/')) {
+    return (
+      <img
+        src={raw}
+        alt=""
+        style={{ width: size, height: size, objectFit: 'contain', verticalAlign: 'middle' }}
+      />
+    );
   }
 
-  return getModelIcon(m.icon);
+  return getModelIcon(raw || 'cpu', size);
 };
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -187,8 +214,8 @@ const KnowledgeBasePanel = ({ onClose, onUploadSuccess }) => {
         setTimeout(() => setUploadStatus(null), 4000);
         return;
       }
-      if (file.size > 10 * 1024 * 1024) {
-        setUploadStatus({ type: 'error', msg: `"${file.name}" is too large. Max size is 10 MB.` });
+      if (file.size > 100 * 1024 * 1024) {
+        setUploadStatus({ type: 'error', msg: `"${file.name}" is too large. Max size is 100 MB.` });
         setTimeout(() => setUploadStatus(null), 4000);
         return;
       }
@@ -305,7 +332,7 @@ const KnowledgeBasePanel = ({ onClose, onUploadSuccess }) => {
             </svg>
             Choose File
           </button>
-          <p className="kb-dropzone-formats">PDF · TXT · MD · Markdown · up to 10 MB</p>
+          <p className="kb-dropzone-formats">PDF · TXT · MD · Markdown · up to 100 MB</p>
         </div>
 
         {/* Upload status */}
@@ -793,7 +820,7 @@ const Chat = () => {
                   title="Generate Image with AI"
                   style={{ color: '#ec4899', borderColor: 'rgba(236,72,153,0.4)', background: 'rgba(236,72,153,0.08)', gap: '4px' }}
                 >
-                  <Sparkles size={11} style={{ color: '#ec4899' }} />
+                  <ImagePlus size={11} style={{ color: '#ec4899' }} />
                   <span>Generate Image</span>
                 </button>
               )}

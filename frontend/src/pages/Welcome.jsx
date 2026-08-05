@@ -5,6 +5,7 @@ import { AlertCircle } from 'lucide-react';
 import { getToken, clearGuestProfile } from '../utils/storage';
 import { redirectToGoogle } from '../utils/googleAuth';
 import AnimatedLogo from '../components/three/AnimatedLogo';
+import AuthLegalNotice from '../components/AuthLegalNotice';
 import '../styles/welcome.css';
 
 const Welcome = () => {
@@ -160,6 +161,7 @@ const Welcome = () => {
         </div>
 
         <p className="wc-note">Free forever · No credit card required</p>
+        <AuthLegalNotice className="wc-legal" />
       </motion.div>
     </div>
   );

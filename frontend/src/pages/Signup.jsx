@@ -7,6 +7,7 @@ import { redirectToGoogle } from '../utils/googleAuth';
 import { AlertCircle, CheckCircle, Mail, Eye, EyeOff, Sparkles, ArrowLeft } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import InteractiveLogo from '../components/InteractiveLogo';
+import AuthLegalNotice from '../components/AuthLegalNotice';
 import { useNavigate } from 'react-router-dom';
 import '../styles/pages.css';
 
@@ -272,6 +273,8 @@ const Signup = () => {
           Already have an account?{' '}
           <Link to="/login" id="signup-login-link">Sign in</Link>
         </div>
+
+        <AuthLegalNotice />
       </div>
     </div>
   );

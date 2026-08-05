@@ -9,7 +9,7 @@ import {
 import {
     Sparkles, Download, Copy, Trash2, RefreshCw, Image as ImageIcon,
     ChevronDown, Moon, Sun, LogOut, Menu, Wand2, X, Check,
-    ZoomIn, LayoutGrid, Layers,
+    ZoomIn, LayoutGrid, Layers, Square, RectangleHorizontal, RectangleVertical, Monitor,
 } from 'lucide-react';
 import '../styles/pages.css';
 import '../styles/sidebar.css';
@@ -34,11 +34,20 @@ const DEFAULT_STYLES = [
     { id: 'fantasy illustration', label: 'Fantasy' },
 ];
 const DEFAULT_RATIOS = [
-    { id: '1:1', label: 'Square', width: 1024, height: 1024, icon: '⬛' },
-    { id: '16:9', label: 'Landscape', width: 1344, height: 768, icon: '▬' },
-    { id: '9:16', label: 'Portrait', width: 768, height: 1344, icon: '▮' },
-    { id: '4:3', label: '4:3', width: 1152, height: 864, icon: '🖥' },
+    { id: '1:1', label: 'Square', width: 1024, height: 1024, icon: 'square' },
+    { id: '16:9', label: 'Landscape', width: 1344, height: 768, icon: 'landscape' },
+    { id: '9:16', label: 'Portrait', width: 768, height: 1344, icon: 'portrait' },
+    { id: '4:3', label: '4:3', width: 1152, height: 864, icon: 'monitor' },
 ];
+
+const getRatioIcon = (icon, size = 14) => {
+    const key = String(icon || '').toLowerCase();
+    if (key === 'square' || key === '⬛' || key === '1:1') return <Square size={size} />;
+    if (key === 'landscape' || key === '▬' || key === '16:9') return <RectangleHorizontal size={size} />;
+    if (key === 'portrait' || key === '▮' || key === '9:16') return <RectangleVertical size={size} />;
+    if (key === 'monitor' || key === '🖥' || key === '4:3') return <Monitor size={size} />;
+    return <LayoutGrid size={size} />;
+};
 
 const PROMPT_SUGGESTIONS = [
     'A futuristic city floating in the clouds at sunset, neon lights reflecting in rain puddles',
@@ -459,7 +468,7 @@ const ImageGen = () => {
                                                     onClick={() => { setSelectedRatio(r); setShowRatioDrop(false); }}
                                                     type="button"
                                                 >
-                                                    <span style={{ fontSize: '15px' }}>{r.icon}</span>
+                                                    <span style={{ display: 'inline-flex', color: 'rgba(255,255,255,0.55)' }}>{getRatioIcon(r.icon || r.id, 14)}</span>
                                                     <div>
                                                         <div style={{ fontSize: '13px', fontWeight: 600 }}>{r.label}</div>
                                                         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>{r.width}×{r.height}</div>
