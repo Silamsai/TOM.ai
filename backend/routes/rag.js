@@ -34,6 +34,11 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Only PDF, TXT, or Markdown documents are supported.' });
     }
 
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+    if (req.file.size > MAX_FILE_SIZE) {
+      return res.status(400).json({ success: false, message: 'File is too large. Maximum size is 100 MB.' });
+    }
+
     console.log(`[RAG Upload] Indexing file: ${req.file.originalname} (${req.file.size} bytes) for user ${req.userId}`);
     const doc = await indexPersonalDocument(req.userId, req.file);
 

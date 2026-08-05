@@ -7,6 +7,7 @@ import { redirectToGoogle } from '../utils/googleAuth';
 import { Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import InteractiveLogo from '../components/InteractiveLogo';
+import AuthLegalNotice from '../components/AuthLegalNotice';
 import '../styles/pages.css';
 
 const Login = () => {
@@ -188,6 +189,8 @@ const Login = () => {
           Don't have an account?{' '}
           <Link to="/signup" id="login-signup-link">Create one</Link>
         </div>
+
+        <AuthLegalNotice />
       </div>
     </div>
   );
